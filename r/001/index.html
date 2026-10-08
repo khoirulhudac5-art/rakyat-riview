@@ -4,82 +4,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Aktivasi Kartu | Rakyat Review</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f3f5fa;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 20px;
-    }
-    .card {
-      background: white;
-      width: 100%;
-      max-width: 420px;
-      padding: 30px;
-      border-radius: 18px;
-      box-shadow: 0 8px 30px #00000012;
-    }
-    h2 { text-align: center; margin-bottom: 8px; }
-    .desc { text-align: center; color: #666; font-size: 14px; }
-    label { display: block; margin-top: 22px; font-weight: bold; }
-    input {
-      width: 100%;
-      padding: 13px;
-      margin-top: 8px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 15px;
-    }
-    button {
-      width: 100%;
-      margin-top: 25px;
-      padding: 14px;
-      border: 0;
-      border-radius: 8px;
-      background: #315bea;
-      color: white;
-      font-weight: bold;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .note { font-size: 12px; color: #777; text-align: center; margin-top: 18px; }
-  </style>
+  <title>Rakyat Review</title>
 </head>
 <body>
-  <div class="card">
-    <h2>Aktivasi Kartu</h2>
-    <p class="desc">Rakyat Review - NFC & QR Google Review</p>
-    <p class="desc">Kode Kartu: <strong>001</strong></p>
-
-    <form id="activation">
-      <label>Nama Bisnis</label>
-      <input id="business" placeholder="Contoh: Warkop Apuy" required>
-
-      <label>Link Google Review</label>
-      <input id="review" type="url"
-        placeholder="https://..." required>
-
-      <label>Buat PIN (4-6 digit)</label>
-      <input id="pin" type="password"
-        inputmode="numeric" pattern="[0-9]{4,6}"
-        minlength="4" maxlength="6" required>
-
-      <button type="submit">Aktivasi Kartu</button>
-    </form>
-
-    <p class="note">Aktivasi belum tersedia. Sistem sedang disiapkan.</p>
-  </div>
+  <p id="status">Menghubungkan ke Google Maps...</p>
 
   <script>
-    document.getElementById("activation").addEventListener("submit", function(e) {
-      e.preventDefault();
-      alert("Ini masih tampilan demo. Data belum disimpan. Aktivasi akan tersedia setelah database terhubung.");
-    });
+    const SUPABASE_URL = "https://svuagnobuhfpgzmsyxx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_6-p6upj0Amrndlkgxp27iA_SuAwYxpn";
+
+    async function bukaUlasan() {
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/card_public?card_code=eq.001&select=review_url`,
+          {
+            headers: {
+              apikey: SUPABASE_KEY
+            }
+          }
+        );
+
+        if (!response.ok) throw new Error("Gagal mengambil data");
+
+        const data = await response.json();
+        const url = data[0]?.review_url;
+
+        if (!url || !/^https:\/\//i.test(url)) {
+          throw new Error("Link belum tersedia");
+        }
+
+        window.location.replace(url);
+      } catch (error) {
+        document.getElementById("status").textContent =
+          "Kartu belum dapat dibuka. Hubungi pengelola.";
+      }
+    }
+
+    bukaUlasan();
   </script>
 </body>
 </html>
