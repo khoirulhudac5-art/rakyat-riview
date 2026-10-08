@@ -56,6 +56,24 @@
       <button id="check">Cek Kartu</button>
       <div id="result" aria-live="polite"></div>
     </div>
+    
+<div class="card">
+  <h2>Ganti Link Google Review</h2>
+  <p class="muted">Masukkan kode kartu, PIN, dan link Google Review baru.</p>
+
+  <label for="editCode">Kode Kartu</label>
+  <input id="editCode" placeholder="Contoh: 001">
+
+  <label for="editPin">PIN Kartu</label>
+  <input id="editPin" type="password" placeholder="Masukkan PIN">
+
+  <label for="editUrl">Link Google Review Baru</label>
+  <input id="editUrl" type="url" placeholder="https://...">
+
+  <button id="saveLink" type="button">Simpan Perubahan</button>
+  <p id="editResult" aria-live="polite"></p>
+</div>
+
   </main>
 
   <script>
