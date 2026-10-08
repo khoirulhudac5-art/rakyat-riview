@@ -1,12 +1,126 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rakyat Review</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: Arial, sans-serif;
+      background: #f3f6fa; color: #172033;
+    }
+    header {
+      background: #10243d; color: white;
+      padding: 28px 20px; text-align: center;
+    }
+    header h1 { margin: 0 0 8px; }
+    header p { margin: 0; color: #cbd5e1; }
+    main { max-width: 460px; margin: 35px auto; padding: 0 16px; }
+    .card {
+      background: white; padding: 26px;
+      border-radius: 18px;
+      box-shadow: 0 8px 30px #14213d12;
+    }
+    label { display: block; margin: 18px 0 8px; font-weight: bold; }
+    input {
+      width: 100%; padding: 14px; font-size: 16px;
+      border: 1px solid #cbd5e1; border-radius: 10px;
+    }
+    button {
+      width: 100%; padding: 14px; margin-top: 20px;
+      border: 0; border-radius: 10px;
+      background: #10243d; color: white;
+      font-size: 16px; font-weight: bold; cursor: pointer;
+    }
+    #result { margin-top: 20px; line-height: 1.6; }
+    .muted { color: #64748b; font-size: 14px; }
+    a { color: #1769aa; overflow-wrap: anywhere; }
+  </style>
 </head>
 <body>
-  <h1>Rakyat Review</h1>
-  <p>Sistem NFC & QR Google Review berhasil aktif.</p>
+  <header>
+    <h1>Rakyat Review</h1>
+    <p>Kelola kartu NFC & QR Google Review</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Cek Kartu</h2>
+      <p class="muted">Masukkan kode kartu untuk melihat status dan tujuan link.</p>
+
+      <label for="code">Kode Kartu</label>
+      <input id="code" placeholder="Contoh: 001" maxlength="30">
+
+      <button id="check">Cek Kartu</button>
+      <div id="result" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://svuagnobufhfpgzmsyxx.supabase.co";
+    const result = document.getElementById("result");
+
+    document.getElementById("check").addEventListener("click", async () => {
+      const code = document.getElementById("code").value.trim();
+
+      if (!/^[a-zA-Z0-9_-]{1,30}$/.test(code)) {
+        result.textContent = "Masukkan kode kartu yang valid.";
+        return;
+      }
+
+      result.textContent = "Memeriksa kartu...";
+
+      try {
+        const configResponse = await fetch("/supabase-config.js");
+        if (!configResponse.ok) throw new Error("Konfigurasi tidak tersedia");
+
+        // Baca konfigurasi publik yang sudah digunakan website.
+        const configText = await configResponse.text();
+        const keyMatch = configText.match(
+          /(?:SUPABASE_KEY|supabaseKey|supabaseAnonKey)\s*=\s*["']([^"']+)["']/
+        );
+        if (!keyMatch) throw new Error("Kunci publik tidak ditemukan");
+
+        const key = keyMatch[1];
+        const url = SUPABASE_URL +
+          "/rest/v1/card_public?card_code=eq." +
+          encodeURIComponent(code) +
+          "&select=card_code,business_name,review_url&limit=1";
+
+        const response = await fetch(url, {
+          headers: { apikey: key, Authorization: "Bearer " + key }
+        });
+        if (!response.ok) throw new Error("Gagal membaca kartu");
+
+        const rows = await response.json();
+        result.replaceChildren();
+
+        if (!rows.length) {
+          result.textContent = "Kartu tidak ditemukan.";
+          return;
+        }
+
+        const card = rows[0];
+        const name = document.createElement("strong");
+        name.textContent = card.business_name || "Tanpa nama toko";
+
+        const info = document.createElement("p");
+        info.textContent = "Kode kartu: " + card.card_code;
+
+        const link = document.createElement("a");
+        link.href = location.origin + "/r/" +
+          encodeURIComponent(card.card_code) + "/";
+        link.textContent = "Buka link kartu";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+
+        result.append(name, info, link);
+      } catch (error) {
+        result.textContent = "Gagal memeriksa kartu. " + error.message;
+      }
+    });
+  </script>
 </body>
 </html>
