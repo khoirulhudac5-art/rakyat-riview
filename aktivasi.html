@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aktivasi Kartu | Rakyat Review</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fa;
+      color: #172033;
+    }
+    header {
+      background: #10243e;
+      color: white;
+      padding: 32px 20px;
+      text-align: center;
+    }
+    header h1 { margin: 0 0 10px; }
+    header p { margin: 0; color: #cbd5e1; }
+    main {
+      max-width: 520px;
+      margin: 35px auto;
+      padding: 0 18px;
+    }
+    .card {
+      background: white;
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: 0 8px 25px #1720330d;
+    }
+    h2 { margin-top: 0; }
+    label {
+      display: block;
+      margin: 18px 0 8px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      margin-top: 25px;
+      padding: 17px;
+      border: 0;
+      border-radius: 10px;
+      background: #10243e;
+      color: white;
+      font-size: 17px;
+      cursor: pointer;
+    }
+    #result {
+      margin-top: 18px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Rakyat Review</h1>
+    <p>Aktivasi Kartu NFC & QR</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Aktivasi Kartu</h2>
+      <p>Lengkapi data berikut untuk mengaktifkan kartu Anda.</p>
+
+      <form id="activationForm">
+        <label for="cardCode">Kode Kartu</label>
+        <input id="cardCode" required placeholder="Contoh: 002">
+
+        <label for="activationCode">Kode Aktivasi</label>
+        <input id="activationCode" type="password" required
+               placeholder="Masukkan kode aktivasi">
+
+        <label for="businessName">Nama Usaha</label>
+        <input id="businessName" required
+               placeholder="Nama usaha Anda">
+
+        <label for="reviewUrl">Link Google Review</label>
+        <input id="reviewUrl" type="url" required
+               placeholder="https://...">
+
+        <label for="pin">Buat PIN Kartu</label>
+        <input id="pin" type="password" required minlength="6"
+               placeholder="Minimal 6 karakter">
+
+        <button type="submit">Aktivasi Kartu</button>
+      </form>
+
+      <p id="result" role="status" aria-live="polite"></p>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById("activationForm")
+      .addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        document.getElementById("result").textContent =
+          "Halaman aktivasi siap. Sistem verifikasi " +
+          "kode aktivasi belum dihubungkan.";
+      });
+  </script>
+</body>
+</html>
