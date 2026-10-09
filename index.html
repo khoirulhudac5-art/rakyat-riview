@@ -139,6 +139,30 @@
         result.textContent = "Gagal memeriksa kartu. " + error.message;
       }
     });
+    document.getElementById("saveLink").addEventListener("click", async () => {
+  const code = document.getElementById("editCode").value.trim();
+  const pin = document.getElementById("editPin").value.trim();
+  const review_url = document.getElementById("editUrl").value.trim();
+  const result = document.getElementById("editResult");
+
+  result.textContent = "Sedang menyimpan...";
+
+  try {
+    const response = await fetch("/api/update-card", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ card_code: code, pin, review_url })
+    });
+
+    const data = await response.json();
+
+    result.textContent = response.ok
+      ? "Link berhasil diperbarui."
+      : "Gagal: " + (data.error || "Terjadi kesalahan.");
+  } catch (error) {
+    result.textContent = "Gagal terhubung ke server.";
+  }
+});
   </script>
 </body>
 </html>
