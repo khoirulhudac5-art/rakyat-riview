@@ -100,15 +100,51 @@
     </div>
   </main>
 
-  <script>
-    document.getElementById("activationForm")
-      .addEventListener("submit", function (event) {
-        event.preventDefault();
+  
+<script>
+  document.getElementById("activationForm")
+    .addEventListener("submit", async function (event) {
+      event.preventDefault();
 
-        document.getElementById("result").textContent =
-          "Halaman aktivasi siap. Sistem verifikasi " +
-          "kode aktivasi belum dihubungkan.";
-      });
-  </script>
+      const result = document.getElementById("result");
+      const button = this.querySelector('button[type="submit"]');
+
+      const payload = {
+        card_code: document.getElementById("cardCode").value.trim(),
+        activation_code: document.getElementById("activationCode").value.trim(),
+        business_name: document.getElementById("businessName").value.trim(),
+        review_url: document.getElementById("reviewUrl").value.trim(),
+        pin: document.getElementById("pin").value
+      };
+
+      button.disabled = true;
+      result.textContent = "Sedang mengaktifkan kartu...";
+
+      try {
+        const response = await fetch("/api/activate-card", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success === true) {
+          result.textContent = "Kartu berhasil diaktifkan!";
+          this.reset();
+        } else {
+          result.textContent =
+            data.message || data.error || "Aktivasi gagal.";
+        }
+      } catch (error) {
+        result.textContent = "Gagal terhubung ke server.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+</script>
+
 </body>
 </html>
