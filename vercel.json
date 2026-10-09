@@ -1,0 +1,13 @@
+
+{
+  "rewrites": [
+    {
+      "source": "/r/:code",
+      "destination": "/r/001/index.html"
+    },
+    {
+      "source": "/r/:code/",
+      "destination": "/r/001/index.html"
+    }
+  ]
+}
