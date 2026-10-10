@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rakyat Review - Generator Kartu</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #172033;
+    }
+
+    .header {
+      background: #102b4c;
+      color: white;
+      padding: 22px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 35px auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 28px;
+      border-radius: 18px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.08);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 7px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #ccd3dc;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 22px;
+      padding: 15px;
+      border: 0;
+      border-radius: 10px;
+      background: #102b4c;
+      color: white;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    #result {
+      display: none;
+      margin-top: 25px;
+      padding: 18px;
+      background: #eef5ff;
+      border-radius: 12px;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .value {
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>Rakyat Review</h1>
+    <div>Generator Kartu</div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+
+      <h2>Buat Kartu Baru</h2>
+
+      <label>Kode Kartu</label>
+      <input
+        id="cardCode"
+        type="text"
+        placeholder="Contoh: 004"
+        autocomplete="off"
+      >
+
+      <button id="generateBtn" onclick="createCard()">
+        Generate Kartu
+      </button>
+
+      <div id="result"></div>
+
+    </div>
+  </div>
+
+<script>
+async function createCard() {
+
+  const cardCode = document
+    .getElementById("cardCode")
+    .value
+    .trim();
+
+  const button = document.getElementById("generateBtn");
+  const result = document.getElementById("result");
+
+  if (!cardCode) {
+    alert("Masukkan kode kartu.");
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Membuat kartu...";
+
+  try {
+
+    const response = await fetch("/api/create-card", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        card_code: cardCode
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Gagal membuat kartu");
+    }
+
+    result.style.display = "block";
+
+    result.innerHTML = `
+      <strong>Kartu berhasil dibuat</strong><br><br>
+
+      Kode Kartu:<br>
+      <span class="value">${escapeHtml(data.card_code || cardCode)}</span>
+      <br><br>
+
+      Kode Aktivasi:<br>
+      <span class="value">${escapeHtml(data.activation_code || "-")}</span>
+      <br><br>
+
+      Link Kartu:<br>
+      <span class="value">${escapeHtml(
+        data.card_url ||
+        (location.origin + "/r/" + encodeURIComponent(data.card_code || cardCode))
+      )}</span>
+    `;
+
+  } catch (error) {
+
+    result.style.display = "block";
+    result.textContent = "Gagal: " + error.message;
+
+  } finally {
+
+    button.disabled = false;
+    button.textContent = "Generate Kartu";
+
+  }
+}
+
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = String(value);
+  return div.innerHTML;
+}
+</script>
+
+</body>
+</html>
