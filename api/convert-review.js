@@ -1,109 +1,87 @@
 
-const allowedHosts = new Set([
-  "maps.app.goo.gl",
-  "goo.gl",
-  "google.com",
-  "www.google.com",
-  "maps.google.com",
-  "search.google.com"
-]);
-
-function validGoogleUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" &&
-      allowedHosts.has(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-function extractPlaceId(value) {
-  try {
-    const url = new URL(value);
-
-    const id =
-      url.searchParams.get("placeid") ||
-      url.searchParams.get("query_place_id");
-
-    if (id && /^ChI[A-Za-z0-9_-]+$/.test(id)) {
-      return id;
-    }
-
-    const match = decodeURIComponent(value).match(
-      /(?:placeid=|query_place_id=|!1s)(ChI[A-Za-z0-9_-]+)/i
-    );
-
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "no-store");
-
   if (req.method !== "POST") {
     return res.status(405).json({
-      error: "Metode tidak diizinkan"
+      error: "Metode tidak diizinkan."
     });
   }
 
-  const { maps_url } = req.body || {};
+  const mapsUrl = req.body?.maps_url;
 
-  if (
-    typeof maps_url !== "string" ||
-    maps_url.length > 2048 ||
-    !validGoogleUrl(maps_url)
-  ) {
+  if (typeof mapsUrl !== "string" || !mapsUrl.trim() || mapsUrl.length > 8192) {
     return res.status(400).json({
-      error: "Masukkan link Google Maps yang valid"
+      error: "Masukkan link Google Maps yang valid."
     });
   }
 
   try {
-    let placeId = extractPlaceId(maps_url);
+    const url = new URL(mapsUrl.trim());
+    const host = url.hostname.toLowerCase();
 
-    if (!placeId) {
-      const controller = new AbortController();
-      const timeout = setTimeout(
-        () => controller.abort(), 5000
-      );
+    const allowed =
+      host === "maps.app.goo.gl" ||
+      host === "goo.gl" && url.pathname.startsWith("/maps/") ||
+      host === "google.com" ||
+      host.endsWith(".google.com") ||
+      /^google\.[a-z.]+$/.test(host) ||
+      host === "maps.google.com";
 
-      try {
-        const response = await fetch(maps_url, {
-          method: "GET",
-          redirect: "follow",
-          signal: controller.signal
-        });
-
-        if (!validGoogleUrl(response.url)) {
-          return res.status(422).json({
-            error: "Tujuan link bukan Google Maps"
-          });
-        }
-
-        placeId = extractPlaceId(response.url);
-      } finally {
-        clearTimeout(timeout);
-      }
+    if (url.protocol !== "https:" || !allowed) {
+      return res.status(400).json({
+        error: "Gunakan link Google Maps."
+      });
     }
 
-    if (!placeId) {
+    const response = await fetch(
+      "https://productmate.com/api/v1/google-review-link",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          maps_url: mapsUrl.trim()
+        }),
+        signal: AbortSignal.timeout(15000)
+      }
+    );
+
+    if (response.status === 429) {
+      return res.status(429).json({
+        error: "Batas konversi tercapai. Coba lagi setelah 1 menit."
+      });
+    }
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.review_url) {
       return res.status(422).json({
-        error: "Place ID tidak ditemukan. Gunakan link ulasan langsung."
+        error: "Konversi gagal. Coba link Bagikan Google Maps yang lain."
+      });
+    }
+
+    const reviewUrl = new URL(data.review_url);
+    if (
+      reviewUrl.protocol !== "https:" ||
+      reviewUrl.hostname !== "search.google.com" ||
+      reviewUrl.pathname !== "/local/writereview" ||
+      !/^ChI[A-Za-z0-9_-]+$/.test(
+        reviewUrl.searchParams.get("placeid") || ""
+      )
+    ) {
+      return res.status(502).json({
+        error: "Hasil konversi tidak valid."
       });
     }
 
     return res.status(200).json({
-      success: true,
-      review_url:
-        "https://search.google.com/local/writereview?placeid=" +
-        encodeURIComponent(placeId)
+      place_id: data.place_id,
+      review_url: reviewUrl.toString()
     });
-  } catch {
-    return res.status(422).json({
-      error: "Link belum bisa dikonversi otomatis"
+
+  } catch (error) {
+    return res.status(502).json({
+      error: "Layanan konversi sedang bermasalah. Coba lagi."
     });
   }
 }
