@@ -19,20 +19,25 @@ function validGoogleUrl(value) {
 }
 
 function extractPlaceId(value) {
-  const url = new URL(value);
+  try {
+    const url = new URL(value);
 
-  const id = url.searchParams.get("placeid") ||
-    url.searchParams.get("query_place_id");
+    const id =
+      url.searchParams.get("placeid") ||
+      url.searchParams.get("query_place_id");
 
-  if (id && /^ChI[A-Za-z0-9_-]+$/.test(id)) {
-    return id;
+    if (id && /^ChI[A-Za-z0-9_-]+$/.test(id)) {
+      return id;
+    }
+
+    const match = decodeURIComponent(value).match(
+      /(?:placeid=|query_place_id=|!1s)(ChI[A-Za-z0-9_-]+)/i
+    );
+
+    return match ? match[1] : null;
+  } catch {
+    return null;
   }
-
-  const match = value.match(
-    /(?:placeid=|query_place_id=)(ChI[A-Za-z0-9_-]+)/i
-  );
-
-  return match ? match[1] : null;
 }
 
 export default async function handler(req, res) {
