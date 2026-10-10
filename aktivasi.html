@@ -164,7 +164,7 @@
 
         const data = await response.json();
 
-        if (response.ok && data.success === true &&
+        if (response.ok &&
             typeof data.review_url === "string") {
           reviewInput.value = data.review_url;
           convertResult.textContent =
