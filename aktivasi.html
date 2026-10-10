@@ -56,9 +56,26 @@
       font-size: 17px;
       cursor: pointer;
     }
-    #result {
-      margin-top: 18px;
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    .convert-button {
+      margin-top: 10px;
+      background: #2563eb;
+      font-size: 15px;
+      padding: 13px;
+    }
+    .hint {
+      font-size: 13px;
+      color: #64748b;
       line-height: 1.5;
+    }
+    #convertResult, #result {
+      margin-top: 12px;
+      line-height: 1.5;
+      font-size: 14px;
+      overflow-wrap: anywhere;
     }
   </style>
 </head>
@@ -85,66 +102,130 @@
         <input id="businessName" required
                placeholder="Nama usaha Anda">
 
-        <label for="reviewUrl">Link Google Review</label>
+        <label for="reviewUrl">Link Google Maps / Google Review</label>
         <input id="reviewUrl" type="url" required
-               placeholder="https://...">
+               placeholder="https://maps.app.goo.gl/...">
+
+        <button type="button" id="convertButton"
+                class="convert-button">
+          Konversi Otomatis ke Link Rating
+        </button>
+
+        <p class="hint">
+          Tempel link lokasi Google Maps, lalu klik Konversi.
+          Jika gagal, masukkan link Google Review langsung.
+        </p>
+
+        <p id="convertResult" role="status"
+           aria-live="polite"></p>
 
         <label for="pin">Buat PIN Kartu</label>
         <input id="pin" type="password" required minlength="6"
                placeholder="Minimal 6 karakter">
 
-        <button type="submit">Aktivasi Kartu</button>
+        <button type="submit" id="activateButton">
+          Aktivasi Kartu
+        </button>
       </form>
 
       <p id="result" role="status" aria-live="polite"></p>
     </div>
   </main>
 
-  
-<script>
-  document.getElementById("activationForm")
-    .addEventListener("submit", async function (event) {
-      event.preventDefault();
+  <script>
+    const reviewInput = document.getElementById("reviewUrl");
+    const convertButton = document.getElementById("convertButton");
+    const convertResult = document.getElementById("convertResult");
 
-      const result = document.getElementById("result");
-      const button = this.querySelector('button[type="submit"]');
+    reviewInput.addEventListener("input", () => {
+      convertResult.textContent = "";
+    });
 
-      const payload = {
-        card_code: document.getElementById("cardCode").value.trim(),
-        activation_code: document.getElementById("activationCode").value.trim(),
-        business_name: document.getElementById("businessName").value.trim(),
-        review_url: document.getElementById("reviewUrl").value.trim(),
-        pin: document.getElementById("pin").value
-      };
+    convertButton.addEventListener("click", async () => {
+      const mapsUrl = reviewInput.value.trim();
 
-      button.disabled = true;
-      result.textContent = "Sedang mengaktifkan kartu...";
+      if (!mapsUrl) {
+        convertResult.textContent =
+          "Masukkan link Google Maps terlebih dahulu.";
+        return;
+      }
+
+      convertButton.disabled = true;
+      convertResult.textContent = "Sedang mengonversi link...";
 
       try {
-        const response = await fetch("/api/activate-card", {
+        const response = await fetch("/api/convert-review", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ maps_url: mapsUrl })
         });
 
         const data = await response.json();
 
-        if (response.ok && data.success === true) {
-          result.textContent = "Kartu berhasil diaktifkan!";
-          this.reset();
+        if (response.ok && data.success === true &&
+            typeof data.review_url === "string") {
+          reviewInput.value = data.review_url;
+          convertResult.textContent =
+            "Berhasil! Link langsung ke menu rating sudah siap.";
         } else {
-          result.textContent =
-            data.message || data.error || "Aktivasi gagal.";
+          convertResult.textContent =
+            data.error || "Link belum bisa dikonversi otomatis.";
         }
-      } catch (error) {
-        result.textContent = "Gagal terhubung ke server.";
+      } catch {
+        convertResult.textContent =
+          "Gagal menghubungi server konversi.";
       } finally {
-        button.disabled = false;
+        convertButton.disabled = false;
       }
     });
-</script>
 
+    document.getElementById("activationForm")
+      .addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const result = document.getElementById("result");
+        const button = document.getElementById("activateButton");
+
+        const payload = {
+          card_code: document.getElementById("cardCode").value.trim(),
+          activation_code:
+            document.getElementById("activationCode").value.trim(),
+          business_name:
+            document.getElementById("businessName").value.trim(),
+          review_url: reviewInput.value.trim(),
+          pin: document.getElementById("pin").value
+        };
+
+        button.disabled = true;
+        result.textContent = "Sedang mengaktifkan kartu...";
+
+        try {
+          const response = await fetch("/api/activate-card", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success === true) {
+            result.textContent = "Kartu berhasil diaktifkan!";
+            this.reset();
+            convertResult.textContent = "";
+          } else {
+            result.textContent =
+              data.message || data.error || "Aktivasi gagal.";
+          }
+        } catch {
+          result.textContent = "Gagal terhubung ke server.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+  </script>
 </body>
 </html>
