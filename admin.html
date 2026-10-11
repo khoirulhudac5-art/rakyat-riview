@@ -204,8 +204,13 @@ function escapeHtml(value) {
 
 <div class="card" style="margin-top: 20px;">
   <h2>Daftar Kartu</h2>
-  <div id="cardStats" style="margin-bottom:20px;">
-  Total Kartu: - | Aktif: - | Belum Aktif: -
+  <div id="cardStats" style="
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-bottom:20px;
+">
+  Memuat statistik...
 </div>
   <div id="cardList">
     Memuat daftar kartu...
@@ -222,8 +227,22 @@ async function loadCards() {
 const aktif = data.cards.filter(card => card.business_name).length;
 const belumAktif = total - aktif;
 
-document.getElementById("cardStats").innerHTML =
-  `Total Kartu: <strong>${total}</strong> | Aktif: <strong>${aktif}</strong> | Belum Aktif: <strong>${belumAktif}</strong>`;
+document.getElementById("cardStats").innerHTML = `
+  <div style="padding:18px;border:1px solid #ddd;border-radius:12px;text-align:center;">
+    <div style="font-size:28px;font-weight:bold;">${total}</div>
+    <div>Total Kartu</div>
+  </div>
+
+  <div style="padding:18px;border:1px solid #ddd;border-radius:12px;text-align:center;">
+    <div style="font-size:28px;font-weight:bold;">${aktif}</div>
+    <div>Aktif</div>
+  </div>
+
+  <div style="padding:18px;border:1px solid #ddd;border-radius:12px;text-align:center;">
+    <div style="font-size:28px;font-weight:bold;">${belumAktif}</div>
+    <div>Belum Aktif</div>
+  </div>
+`;
 
     if (!response.ok || !data.success) {
       throw new Error("Gagal mengambil daftar kartu");
