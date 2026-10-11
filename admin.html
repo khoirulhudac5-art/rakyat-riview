@@ -238,7 +238,7 @@ async function loadCards() {
   try {
     const response = await fetch("/api/list-cards");
     const data = await response.json();
-    if (!response.ok || !data.sukses) {
+    if (!response.ok || !data.success) {
   throw new Error("Gagal mengambil daftar kartu");
 }
    const allCards = data.cards;
