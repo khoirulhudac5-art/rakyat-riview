@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const response = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/card?select=*&order=created_at.desc
+      `${process.env.SUPABASE_URL}/rest/v1/card?select=*&order=created_at.desc`,
       {
         headers: {
           apikey: process.env.SUPABASE_SECRET_KEY,
