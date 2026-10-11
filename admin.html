@@ -212,6 +212,20 @@ function escapeHtml(value) {
 ">
   Memuat statistik...
 </div>
+  <input
+  type="text"
+  id="searchCard"
+  placeholder="Cari nomor kartu atau nama usaha..."
+  style="
+    width:100%;
+    box-sizing:border-box;
+    padding:14px 16px;
+    margin-bottom:20px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    font-size:16px;
+  "
+>
   <div id="cardList">
     Memuat daftar kartu...
   </div>
@@ -219,10 +233,12 @@ function escapeHtml(value) {
 <script>
 async function loadCards() {
   const cardList = document.getElementById("cardList");
+  const searchCard = document.getElementById("searchCard");
 
   try {
     const response = await fetch("/api/list-cards");
     const data = await response.json();
+    let allCards = data.cards;
     const total = data.cards.length;
 const aktif = data.cards.filter(card => card.business_name).length;
 const belumAktif = total - aktif;
@@ -253,7 +269,7 @@ document.getElementById("cardStats").innerHTML = `
       return;
     }
 
-   cardList.innerHTML = data.cards.map(card => `
+   cardList.innerHTML = allcards.map(card => `
   <div style="
     border:1px solid #e5e7eb;
     border-radius:14px;
@@ -297,6 +313,62 @@ document.getElementById("cardStats").innerHTML = `
     </a>
   </div>
 `).join("");
+    searchCard.addEventListener("input", function () {
+  const keyword = this.value.toLowerCase().trim();
+
+  const filteredCards = allCards.filter(card =>
+    String(card.card_code).toLowerCase().includes(keyword) ||
+    String(card.business_name || "").toLowerCase().includes(keyword)
+  );
+
+  cardList.innerHTML = filteredCards.map(card => `
+    <div style="
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:18px;
+      margin-bottom:12px;
+      background:#fff;
+    ">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <strong style="font-size:18px;">
+          Kartu ${escapeHtml(card.card_code)}
+        </strong>
+
+        <span style="
+          padding:6px 12px;
+          border-radius:20px;
+          font-weight:bold;
+          background:${card.business_name ? "#dcfce7" : "#fef3c7"};
+          color:${card.business_name ? "#166534" : "#92400e"};
+        ">
+          ${card.business_name ? "Aktif" : "Belum Aktif"}
+        </span>
+      </div>
+
+      <div style="margin-top:10px;">
+        Nama Usaha: <strong>${escapeHtml(card.business_name || "-")}</strong>
+      </div>
+
+      <a href="/r/${encodeURIComponent(card.card_code)}"
+         target="_blank"
+         style="
+           display:inline-block;
+           margin-top:14px;
+           padding:9px 14px;
+           background:#12355b;
+           color:white;
+           text-decoration:none;
+           border-radius:8px;
+         ">
+        Buka Kartu
+      </a>
+    </div>
+  `).join("");
+
+  if (filteredCards.length === 0) {
+    cardList.innerHTML = "Kartu tidak ditemukan.";
+  }
+});
 
   } catch (error) {
     cardList.innerHTML = "Gagal memuat daftar kartu.";
