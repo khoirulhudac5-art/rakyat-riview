@@ -204,6 +204,9 @@ function escapeHtml(value) {
 
 <div class="card" style="margin-top: 20px;">
   <h2>Daftar Kartu</h2>
+  <div id="cardStats" style="margin-bottom:20px;">
+  Total Kartu: - | Aktif: - | Belum Aktif: -
+</div>
   <div id="cardList">
     Memuat daftar kartu...
   </div>
@@ -215,6 +218,12 @@ async function loadCards() {
   try {
     const response = await fetch("/api/list-cards");
     const data = await response.json();
+    const total = data.cards.length;
+const aktif = data.cards.filter(card => card.business_name).length;
+const belumAktif = total - aktif;
+
+document.getElementById("cardStats").innerHTML =
+  `Total Kartu: <strong>${total}</strong> | Aktif: <strong>${aktif}</strong> | Belum Aktif: <strong>${belumAktif}</strong>`;
 
     if (!response.ok || !data.success) {
       throw new Error("Gagal mengambil daftar kartu");
