@@ -241,9 +241,9 @@ async function loadCards() {
     if (!response.ok || !data.success) {
   throw new Error("Gagal mengambil daftar kartu");
 }
-   const allCards = data.cards;
-    const total = data.cards.length;
-const aktif = data.cards.filter(card => card.business_name).length;
+   const allCards = data.kartu;
+    const total = data.kartu.length;
+const aktif = data.kartu.filter(card => card.business_name).length;
 const belumAktif = total - aktif;
 
 document.getElementById("cardStats").innerHTML = `
