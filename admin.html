@@ -90,6 +90,13 @@
 </head>
 
 <body>
+  <script>
+  const adminAuth = sessionStorage.getItem("admin_auth");
+
+  if (adminAuth !== "ok") {
+    window.location.href = "/admin-login.html";
+  }
+</script>
 
   <div class="header">
     <h1>Rakyat Review</h1>
