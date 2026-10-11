@@ -238,7 +238,10 @@ async function loadCards() {
   try {
     const response = await fetch("/api/list-cards");
     const data = await response.json();
-    let allCards = data.cards;
+    if (!response.ok || !data.success) {
+  throw new Error("Gagal mengambil daftar kartu");
+}
+   const allCards = data.cards;
     const total = data.cards.length;
 const aktif = data.cards.filter(card => card.business_name).length;
 const belumAktif = total - aktif;
@@ -260,9 +263,7 @@ document.getElementById("cardStats").innerHTML = `
   </div>
 `;
 
-    if (!response.ok || !data.success) {
-      throw new Error("Gagal mengambil daftar kartu");
-    }
+   
 
     if (data.cards.length === 0) {
       cardList.innerHTML = "Belum ada kartu.";
