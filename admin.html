@@ -208,7 +208,41 @@ function escapeHtml(value) {
     Memuat daftar kartu...
   </div>
 </div>
+<script>
+async function loadCards() {
+  const cardList = document.getElementById("cardList");
 
+  try {
+    const response = await fetch("/api/list-cards");
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error("Gagal mengambil daftar kartu");
+    }
+
+    if (data.cards.length === 0) {
+      cardList.innerHTML = "Belum ada kartu.";
+      return;
+    }
+
+    cardList.innerHTML = data.cards.map(card => `
+      <div style="padding:12px 0;border-bottom:1px solid #ddd;">
+        <strong>Kartu ${escapeHtml(card.card_code)}</strong><br>
+        Status: ${card.business_name ? "Aktif" : "Belum Aktif"}<br>
+        Nama Usaha: ${escapeHtml(card.business_name || "-")}<br>
+        <a href="/r/${encodeURIComponent(card.card_code)}" target="_blank">
+          Buka Kartu
+        </a>
+      </div>
+    `).join("");
+
+  } catch (error) {
+    cardList.innerHTML = "Gagal memuat daftar kartu.";
+  }
+}
+
+loadCards();
+</script>
 </body>
 </html>
 
