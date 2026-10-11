@@ -37,7 +37,31 @@ export default async function handler(req, res) {
       .createHash("sha256")
       .update(activationCode)
       .digest("hex");
+    // Buat data kartu dulu agar card_activation tidak kena foreign key
+    const cardResponse = await fetch(
+      `${url}/rest/v1/card`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          Prefer: "return=minimal"
+        },
+        body: JSON.stringify({
+          card_code
+        })
+      }
+    );
 
+    if (!cardResponse.ok) {
+      const detail = await cardResponse.text();
+      console.error("Create base card failed:", cardResponse.status, detail);
+
+      return res.status(400).json({
+        error: "Kode kartu gagal dibuat atau sudah digunakan."
+      });
+    }
     // Simpan hanya HASH ke Supabase
     const response = await fetch(
       `${url}/rest/v1/card_activation`,
