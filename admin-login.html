@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | Rakyat Review</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #172033;
+    }
+
+    .header {
+      background: #102b4c;
+      color: white;
+      text-align: center;
+      padding: 30px 20px;
+    }
+
+    .header h1 {
+      margin: 0 0 8px;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 70px auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 32px;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin: 20px 0 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #ccd5e0;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #102b4c;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #message {
+      margin-top: 18px;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>Rakyat Review</h1>
+    <div>Admin Panel</div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+
+      <h2>Login Admin</h2>
+      <p>Masukkan password untuk mengakses generator kartu.</p>
+
+      <form id="loginForm">
+
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          placeholder="Masukkan password"
+          required
+        >
+
+        <button type="submit" id="loginButton">
+          Login
+        </button>
+
+      </form>
+
+      <div id="message"></div>
+
+    </div>
+  </div>
+
+  <script>
+    if (sessionStorage.getItem("admin_auth") === "ok") {
+      window.location.href = "/admin.html";
+    }
+
+    const form = document.getElementById("loginForm");
+    const button = document.getElementById("loginButton");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      button.disabled = true;
+      button.textContent = "Memeriksa...";
+      message.textContent = "";
+
+      try {
+        const password = document.getElementById("password").value;
+
+        const response = await fetch("/api/admin-login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "Password salah");
+        }
+
+        sessionStorage.setItem("admin_auth", "ok");
+        window.location.href = "/admin.html";
+
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Login";
+      }
+    });
+  </script>
+
+</body>
+</html>
