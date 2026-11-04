@@ -91,16 +91,41 @@
 
 <body>
   <script>
-  const adminAuth = sessionStorage.getItem("admin_auth");
+  const adminReady = fetch("/api/admin-session", { cache: "no-store", credentials: "same-origin" })
+    .then(response => {
+      if (!response.ok) {
+        window.location.replace("/admin-login.html");
+        return false;
+      }
+      return true;
+    })
+    .catch(() => {
+      window.location.replace("/admin-login.html");
+      return false;
+    });
 
-  if (adminAuth !== "ok") {
-    window.location.href = "/admin-login.html";
+  async function logoutAdmin() {
+    const button = document.getElementById("logoutBtn");
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/admin-logout", {
+        method: "POST",
+        headers: { "X-Admin-Request": "1" },
+        credentials: "same-origin"
+      });
+      if (!response.ok) throw new Error("Logout gagal. Coba lagi.");
+      window.location.replace("/admin-login.html");
+    } catch (error) {
+      alert(error.message);
+      button.disabled = false;
+    }
   }
 </script>
 
   <div class="header">
     <h1>Rakyat Review</h1>
     <div>Generator Kartu</div>
+    <button id="logoutBtn" type="button" onclick="logoutAdmin()" style="width:auto;padding:9px 18px;margin-top:12px;">Logout</button>
   </div>
 
   <div class="container">
@@ -127,6 +152,7 @@
 
 <script>
 async function createCard() {
+  if (!await adminReady) return;
 
   const cardCode = document
     .getElementById("cardCode")
@@ -149,13 +175,18 @@ async function createCard() {
     const response = await fetch("/api/create-card", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Admin-Request": "1"
       },
       body: JSON.stringify({
         card_code: cardCode
       })
     });
 
+    if (response.status === 401) {
+      window.location.replace("/admin-login.html");
+      return;
+    }
     const data = await response.json();
 
     if (!response.ok) {
@@ -232,11 +263,16 @@ function escapeHtml(value) {
 </div>
 <script>
 async function loadCards() {
+  if (!await adminReady) return;
   const cardList = document.getElementById("cardList");
   const searchCard = document.getElementById("searchCard");
 
   try {
     const response = await fetch("/api/list-cards");
+    if (response.status === 401) {
+      window.location.replace("/admin-login.html");
+      return;
+    }
     const data = await response.json();
     if (!response.ok || !data.success) {
   throw new Error("Gagal mengambil daftar kartu");

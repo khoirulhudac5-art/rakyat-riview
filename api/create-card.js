@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { requireAdminRequest, requireAdminSession } from "../lib/admin-session.mjs";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -6,6 +7,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Metode tidak diizinkan" });
   }
+
+  if (!requireAdminRequest(req, res) || !requireAdminSession(req, res)) return;
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;

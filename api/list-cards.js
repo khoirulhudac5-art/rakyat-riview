@@ -1,7 +1,12 @@
-module.exports = async function handler(req, res) {
+import { requireAdminSession } from "../lib/admin-session.mjs";
+
+export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+
+  if (!requireAdminSession(req, res)) return;
 
   try {
     const response = await fetch(

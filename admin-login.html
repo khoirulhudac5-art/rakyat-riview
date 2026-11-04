@@ -115,9 +115,9 @@
   </div>
 
   <script>
-    if (sessionStorage.getItem("admin_auth") === "ok") {
-      window.location.href = "/admin.html";
-    }
+    fetch("/api/admin-session", { cache: "no-store", credentials: "same-origin" })
+      .then(response => { if (response.ok) window.location.replace("/admin.html"); })
+      .catch(() => {});
 
     const form = document.getElementById("loginForm");
     const button = document.getElementById("loginButton");
@@ -136,7 +136,8 @@
         const response = await fetch("/api/admin-login", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "X-Admin-Request": "1"
           },
           body: JSON.stringify({ password })
         });
@@ -147,8 +148,7 @@
           throw new Error(data.error || "Password salah");
         }
 
-        sessionStorage.setItem("admin_auth", "ok");
-        window.location.href = "/admin.html";
+        window.location.replace("/admin.html");
 
       } catch (error) {
         message.textContent = error.message;
