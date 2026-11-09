@@ -29,7 +29,7 @@ function boot({ page = 'dashboard', query = '', storage = new Map(), blocked = f
     focus() { this.focused = true; }
   }
   elements.set('shell', new Element());
-  const document = { body: { dataset: { page } }, getElementById: id => elements.get(id), querySelectorAll: () => [], contains: () => true };
+  const document = { body: { dataset: { page, source: 'legacy-demo' } }, getElementById: id => elements.get(id), querySelectorAll: () => [], contains: () => true };
   const context = vm.createContext({
     document, location: { search: query, href: '' }, URL, URLSearchParams, Intl, structuredClone,
     sessionStorage: { getItem: key => { if (blocked) throw Error('blocked'); return storage.get(key) || null; }, setItem: (key, value) => { if (blocked) throw Error('blocked'); storage.set(key, value); }, removeItem: key => storage.delete(key) },

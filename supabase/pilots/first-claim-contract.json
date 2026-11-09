@@ -1,0 +1,53 @@
+{
+  "status": "IMPLEMENTED_AND_TESTED_LOCALLY_NOT_APPLIED_TO_PRODUCTION",
+  "project_ref": "svuagnobufhfpgzmsyxx",
+  "card_code": "iKRb7_7PyK6kg4Ye7EqvOhYu",
+  "public_origin": "https://rakyat-riview.vercel.app",
+  "permanent_path": "/r/iKRb7_7PyK6kg4Ye7EqvOhYu",
+  "baseline_fingerprint_last_verified": "5aefd8e4df29f1c365b8942629b911cd",
+  "default_enabled": false,
+  "ownership_source": "auth.uid() from verified Google JWT; no owner UID input parameter",
+  "rpcs": [
+    {
+      "name": "buyer_pilot_public_status",
+      "signature": "(p_card_code text)",
+      "execute_roles_when_approved": ["anon", "authenticated"],
+      "volatility": "STABLE",
+      "public_fields": ["code", "activation_state", "claim_allowed"],
+      "forbidden_public_fields": ["owner_id", "user_id", "email", "business_name", "review_url", "pin", "pin_hash", "audit"],
+      "outside_scope_response": {"activation_state": "unavailable", "claim_allowed": false}
+    },
+    {
+      "name": "buyer_pilot_first_claim",
+      "signature": "(p_card_code text, p_business_name text, p_review_url text)",
+      "execute_roles_when_approved": ["authenticated"],
+      "volatility": "VOLATILE",
+      "implementation": "Check private card/window registry; derive auth.uid(); establish private transaction context; call existing atomic buyer_first_claim internally; project only success/result code"
+    },
+    {
+      "name": "buyer_pilot_list_cards",
+      "signature": "()",
+      "execute_roles_when_approved": ["authenticated"],
+      "volatility": "STABLE",
+      "filter": "pilot card only AND buyer_card_ownership.user_id = auth.uid()",
+      "fields": ["card_code", "business_name", "review_url", "created_at", "active"]
+    },
+    {
+      "name": "buyer_pilot_redirect_target",
+      "signature": "(p_card_code text)",
+      "execute_roles_when_approved": ["service_role"],
+      "volatility": "STABLE",
+      "consumer": "fixed-scope backend /r/ resolver only",
+      "server_only_fields": ["review_url"],
+      "public_delivery": "HTTP 302 Location to canonical Google Review; no URL in public status JSON"
+    }
+  ],
+  "existing_rpcs_to_open": [],
+  "original_11_and_testing_2": "remain denied",
+  "owner_update": "not enabled by this claim-only pilot",
+  "public_view_privacy": "Exclude this exact pilot card with IS DISTINCT FROM predicate, preserving existing anon policy for every other row including NULL legacy codes",
+  "claim_expiry": "enforced in DB; does not delete ownership or automatically disable already-approved active redirect/owner read",
+  "normal_close": "deny claim writes; preserve committed card, ownership, audits, approved owner read and active redirect",
+  "emergency_close": "deny all pilot operations; no deletion/reset/automatic restore",
+  "export_print_enabled": false
+}

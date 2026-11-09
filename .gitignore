@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.*.example
+.staging/
+.backups/
+.local-tools/
+test-results/
+
+.vercel
+.env*

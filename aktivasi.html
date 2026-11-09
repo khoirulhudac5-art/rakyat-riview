@@ -1,137 +1,63 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f8">
+  <meta name="description" content="Aktifkan kartu NFC dan QR Rakyat Review untuk menghubungkan pelanggan ke Google Review usaha Anda.">
   <title>Aktivasi Kartu | Rakyat Review</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f3f6fa;
-      color: #172033;
-    }
-    header {
-      background: #10243e;
-      color: white;
-      padding: 32px 20px;
-      text-align: center;
-    }
-    header h1 { margin: 0 0 10px; }
-    header p { margin: 0; color: #cbd5e1; }
-    main {
-      max-width: 520px;
-      margin: 35px auto;
-      padding: 0 18px;
-    }
-    .card {
-      background: white;
-      border-radius: 22px;
-      padding: 28px;
-      box-shadow: 0 8px 25px #1720330d;
-    }
-    h2 { margin-top: 0; }
-    label {
-      display: block;
-      margin: 18px 0 8px;
-      font-weight: bold;
-    }
-    input {
-      width: 100%;
-      padding: 15px;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      font-size: 16px;
-    }
-    button {
-      width: 100%;
-      margin-top: 25px;
-      padding: 17px;
-      border: 0;
-      border-radius: 10px;
-      background: #10243e;
-      color: white;
-      font-size: 17px;
-      cursor: pointer;
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: wait;
-    }
-    .convert-button {
-      margin-top: 10px;
-      background: #2563eb;
-      font-size: 15px;
-      padding: 13px;
-    }
-    .hint {
-      font-size: 13px;
-      color: #64748b;
-      line-height: 1.5;
-    }
-    #convertResult, #result {
-      margin-top: 12px;
-      line-height: 1.5;
-      font-size: 14px;
-      overflow-wrap: anywhere;
-    }
-  </style>
+  <link rel="stylesheet" href="assets/activation.css?v=logo-r2">
+<link rel="icon" type="image/png" href="assets/rakyat-review-logo.png">
 </head>
 <body>
-  <header>
-    <h1>Rakyat Review</h1>
-    <p>Aktivasi Kartu NFC & QR</p>
+  <a class="skip" href="#activationForm">Lewati ke formulir aktivasi</a>
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Rakyat Review ? Beranda">
+      <span class="brand-mark" aria-hidden="true"><img class="rr-logo" src="assets/rakyat-review-logo.png" alt="" width="72" height="48"></span>
+      <span>rakyat<span class="brand-light">review</span><small>NFC & QR UNTUK USAHA ANDA</small></span>
+    </a>
+    <a class="back-link" href="index.html"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m5-5-5 5 5 5"/></svg><span>Beranda</span></a>
   </header>
-
   <main>
-    <div class="card">
-      <h2>Aktivasi Kartu</h2>
-      <p>Lengkapi data berikut untuk mengaktifkan kartu Anda.</p>
-
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow"><span></span> MULAI DENGAN SATU SENTUHAN</p>
+      <h1 id="page-title">Kartu Anda.<br>Langkah baru untuk<br><span>reputasi usaha.</span></h1>
+      <p class="intro-text">Hubungkan kartu NFC dan QR ke Google Review usaha Anda. Siap menyambut cerita baik dari pelanggan berikutnya.</p>
+      <div class="card-preview" aria-hidden="true">
+        <div class="preview-top"><span>rakyat<span>review</span></span><img class="rr-logo" src="assets/rakyat-review-logo.png" alt="" width="72" height="48"></div>
+        <div class="preview-title">Usaha Anda,<br>makin dikenal.</div>
+        <div class="preview-bottom"><span>NFC + QR</span><div class="google-dots"><i></i><i></i><i></i><i></i></div></div>
+      </div>
+      <ul class="benefits">
+        <li><span class="benefit-icon blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M4 10h16m-11 5h4"/></svg></span><div><strong>Kartu yang sama, siap digunakan</strong><p>Aktivasi tidak mengubah URL permanen NFC/QR Anda.</p></div></li>
+        <li><span class="benefit-icon green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg></span><div><strong>PIN untuk pengelolaan kartu</strong><p>Simpan PIN Anda agar dapat memperbarui link nanti.</p></div></li>
+      </ul>
+    </section>
+    <section class="activation-card" aria-labelledby="form-title">
+      <div class="color-line" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="form-header"><span class="form-tag">AKTIVASI KARTU</span><h2 id="form-title">Siapkan kartu usaha Anda</h2><p>Lengkapi isian di bawah. Semua kolom wajib diisi.</p></div>
       <form id="activationForm">
-        <label for="cardCode">Kode Kartu</label>
-        <input id="cardCode" required placeholder="Contoh: 002">
-
-        <label for="activationCode">Kode Aktivasi</label>
-        <input id="activationCode" type="password" required
-               placeholder="Masukkan kode aktivasi">
-
-        <label for="businessName">Nama Usaha</label>
-        <input id="businessName" required
-               placeholder="Nama usaha Anda">
-
-        <label for="reviewUrl">Link Google Maps / Google Review</label>
-        <input id="reviewUrl" type="url" required
-               placeholder="https://maps.app.goo.gl/...">
-
-        <button type="button" id="convertButton"
-                class="convert-button">
-          Konversi Otomatis ke Link Rating
-        </button>
-
-        <p class="hint">
-          Tempel link lokasi Google Maps, lalu klik Konversi.
-          Jika gagal, masukkan link Google Review langsung.
-        </p>
-
-        <p id="convertResult" role="status"
-           aria-live="polite"></p>
-
-        <label for="pin">Buat PIN Kartu</label>
-        <input id="pin" type="password" required minlength="6"
-               placeholder="Minimal 6 karakter">
-
-        <button type="submit" id="activateButton">
-          Aktivasi Kartu
-        </button>
+        <fieldset><legend><span class="section-number blue">01</span> Identitas kartu</legend>
+          <div class="field"><label for="cardCode">Kode kartu</label><input id="cardCode" required placeholder="Contoh: 002" aria-describedby="cardCodeHint" autocomplete="off" autocapitalize="none" spellcheck="false"><p class="hint" id="cardCodeHint">Masukkan kode kartu yang Anda terima, termasuk angka nol di depan.</p></div>
+          <div class="field"><label for="activationCode">Kode aktivasi</label><input id="activationCode" type="password" required placeholder="Masukkan kode aktivasi" aria-describedby="activationCodeHint" autocomplete="off"><p class="hint" id="activationCodeHint">Gunakan kode aktivasi yang disertakan bersama kartu. Ini berbeda dari PIN.</p></div>
+        </fieldset>
+        <fieldset><legend><span class="section-number yellow">02</span> Informasi usaha</legend>
+          <div class="field"><label for="businessName">Nama usaha</label><input id="businessName" required placeholder="Contoh: Kopi Ruang Pagi" autocomplete="organization"></div>
+          <div class="field"><label for="reviewUrl">Link Google Maps / Google Review</label><input id="reviewUrl" type="url" required placeholder="https://maps.app.goo.gl/..." aria-describedby="reviewUrlHint" inputmode="url" autocapitalize="none" spellcheck="false">
+            <button type="button" id="convertButton" class="convert-button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h13m-4-4 4 4-4 4M17 17H4m4-4-4 4 4 4"/></svg>Konversi Otomatis ke Link Rating</button>
+            <p class="hint" id="reviewUrlHint">Tempel link lokasi Google Maps, lalu pilih Konversi untuk membuat link rating. Jika gagal, masukkan link Google Review langsung.</p>
+            <p id="convertResult" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
+        </fieldset>
+        <fieldset><legend><span class="section-number green">03</span> Keamanan kartu</legend>
+          <div class="field"><label for="pin">Buat PIN kartu</label><input id="pin" type="password" required minlength="6" placeholder="Minimal 6 karakter" aria-describedby="pinHint" autocomplete="new-password"><p class="hint" id="pinHint">Buat PIN minimal 6 karakter. Simpan dan jangan bagikan kepada orang lain.</p></div>
+        </fieldset>
+        <div class="submit-area"><button type="submit" id="activateButton">Aktivasi Kartu<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p class="submit-note">Pastikan nama usaha dan link sudah benar sebelum melanjutkan.</p></div>
       </form>
-
-      <p id="result" role="status" aria-live="polite"></p>
-    </div>
+      <p id="result" role="status" aria-live="polite" aria-atomic="true"></p>
+    </section>
   </main>
-
+  <footer><span>Rakyat Review <span class="footer-dot">?</span> Dibuat untuk usaha yang terus tumbuh.</span><span>NFC & QR ? Google Review</span></footer>
   <script>
     const reviewInput = document.getElementById("reviewUrl");
     const convertButton = document.getElementById("convertButton");

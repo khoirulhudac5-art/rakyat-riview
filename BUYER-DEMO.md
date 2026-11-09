@@ -8,7 +8,13 @@ node scripts/preview-buyer.mjs
 
 Buka http://127.0.0.1:4173/dashboard.html atau
 http://127.0.0.1:4173/kartu.html?id=demo-101. Hentikan server dengan Ctrl+C.
-Server hanya menyediakan file demo pembeli; tidak menjalankan endpoint API.
+Halaman aktivasi tersedia di http://127.0.0.1:4173/aktivasi.html beserta CSS-nya.
+JavaScript aktivasi sudah tertanam di HTML. Server hanya melayani daftar file
+frontend yang diizinkan, terikat ke localhost, dan tidak menjalankan atau
+meneruskan endpoint API. Konversi link dan pengiriman aktivasi tidak dapat
+diselesaikan pada preview statis ini; database tidak dihubungi.
+Jika server lama masih berjalan, hentikan dengan Ctrl+C lalu jalankan ulang
+perintah di atas agar daftar file baru dimuat.
 
 Demo berisi tiga kartu sintetis, dua aktif dan satu belum aktif, 550 kunjungan
 dan 509 redirect dalam periode tujuh hari contoh. Grafik tidak mewakili data
@@ -46,3 +52,13 @@ serta pesan loading/sukses/gagal. CSS tidak memakai font atau aset eksternal.
 
 Halaman aktivasi/admin, endpoint API, route `/r/:code`, dan file migration
 tidak diubah oleh demo ini. Login dan database akan diintegrasikan kemudian.
+
+## Preview produk terpadu V2 (lanjutan terbaru)
+
+Demo statis di atas tetap tersedia. Untuk mencoba alur lengkap pembeli dan
+Admin dengan akun/kartu sintetis yang disimpan di server lokal, gunakan
+`node scripts/preview-product.mjs`, lalu buka
+http://127.0.0.1:4186/preview-new-card atau
+http://127.0.0.1:4186/admin-v2.html (sandi simulasi `demo-admin`).
+Panduan dan batas integrasi nyata: [PRODUCT-PREVIEW.md](PRODUCT-PREVIEW.md).
+Preview ini tidak memakai Supabase dan tidak membuka akses production.

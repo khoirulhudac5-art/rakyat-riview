@@ -1,0 +1,180 @@
+{
+  "view": " SELECT card_code,\n    business_name,\n    review_url\n   FROM card;",
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon"
+      ],
+      "tablename": "card",
+      "permissive": "PERMISSIVE",
+      "policyname": "public_card_read",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "functions": [
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "set_initial_card_pin",
+      "definition": "CREATE OR REPLACE FUNCTION public.set_initial_card_pin(p_card_code text, p_pin text)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nDECLARE\r\n  updated_count integer;\r\nBEGIN\r\n  IF length(p_pin) < 6 OR length(p_pin) > 72 THEN\r\n    RETURN false;\r\n  END IF;\r\n\r\n  UPDATE public.card\r\n  SET pin_hash = extensions.crypt(\r\n    p_pin,\r\n    extensions.gen_salt('bf')\r\n  )\r\n  WHERE card_code = p_card_code\r\n    AND pin_hash IS NULL;\r\n\r\n  GET DIAGNOSTICS updated_count = ROW_COUNT;\r\n  RETURN updated_count = 1;\r\nEND;\r\n$function$\n",
+      "definition_md5": "ad326b35c9d03a67e0b44cbb8896b851"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "update_card_review_url",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_card_review_url(p_card_code text, p_pin text, p_review_url text)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nDECLARE\r\n  v_hash text;\r\n  v_attempts integer;\r\n  v_locked_until timestamptz;\r\nBEGIN\r\n  IF p_review_url IS NULL\r\n    OR length(p_review_url) > 2048\r\n    OR p_review_url !~* '^https://(maps\\.app\\.goo\\.gl|www\\.google\\.com|google\\.com|search\\.google\\.com)/'\r\n  THEN\r\n    RETURN false;\r\n  END IF;\r\n\r\n  INSERT INTO public.card_pin_attempts (card_code)\r\n  VALUES (p_card_code)\r\n  ON CONFLICT (card_code) DO NOTHING;\r\n\r\n  SELECT attempts, locked_until\r\n  INTO v_attempts, v_locked_until\r\n  FROM public.card_pin_attempts\r\n  WHERE card_code = p_card_code\r\n  FOR UPDATE;\r\n\r\n  IF v_locked_until > now() THEN\r\n    RETURN false;\r\n  END IF;\r\n\r\n  SELECT pin_hash INTO v_hash\r\n  FROM public.card\r\n  WHERE card_code = p_card_code;\r\n\r\n  IF v_hash IS NULL\r\n    OR v_hash <> extensions.crypt(p_pin, v_hash)\r\n  THEN\r\n    UPDATE public.card_pin_attempts\r\n    SET attempts = CASE\r\n          WHEN locked_until <= now() THEN 1\r\n          ELSE attempts + 1\r\n        END,\r\n        locked_until = CASE\r\n          WHEN attempts >= 4 THEN now() + interval '15 minutes'\r\n          ELSE NULL\r\n        END\r\n    WHERE card_code = p_card_code;\r\n\r\n    RETURN false;\r\n  END IF;\r\n\r\n  UPDATE public.card\r\n  SET review_url = p_review_url\r\n  WHERE card_code = p_card_code;\r\n\r\n  UPDATE public.card_pin_attempts\r\n  SET attempts = 0, locked_until = NULL\r\n  WHERE card_code = p_card_code;\r\n\r\n  RETURN true;\r\nEND;\r\n$function$\n",
+      "definition_md5": "bf1a4289f30aefed6d837f46fd0d1695"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "activate_review_card",
+      "definition": "CREATE OR REPLACE FUNCTION public.activate_review_card(p_card_code text, p_activation_code text, p_business_name text, p_review_url text, p_pin text)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nDECLARE\r\n  v_code_hash text;\r\nBEGIN\r\n  IF p_card_code IS NULL\r\n     OR p_card_code !~ '^[a-zA-Z0-9_-]{1,30}$'\r\n     OR p_activation_code IS NULL\r\n     OR length(p_activation_code) < 8\r\n     OR length(p_activation_code) > 128\r\n     OR p_business_name IS NULL\r\n     OR length(btrim(p_business_name)) NOT BETWEEN 1 AND 150\r\n     OR p_review_url IS NULL\r\n     OR length(p_review_url) > 2048\r\n     OR p_review_url !~* '^https://(maps\\.app\\.goo\\.gl|www\\.google\\.com|google\\.com|search\\.google\\.com)/'\r\n     OR p_pin IS NULL\r\n     OR length(p_pin) NOT BETWEEN 6 AND 72\r\n  THEN\r\n    RETURN false;\r\n  END IF;\r\n\r\n  SELECT activation_code_hash\r\n  INTO v_code_hash\r\n  FROM public.card_activation\r\n  WHERE card_code = p_card_code\r\n    AND activated_at IS NULL\r\n  FOR UPDATE;\r\n\r\n  IF NOT FOUND OR v_code_hash IS NULL THEN\r\n    RETURN false;\r\n  END IF;\r\n\r\n  IF v_code_hash <> encode(\r\n    extensions.digest(p_activation_code, 'sha256'),\r\n    'hex'\r\n  ) THEN\r\n    RETURN false;\r\n  END IF;\r\n\r\n  UPDATE public.card\r\n  SET business_name = btrim(p_business_name),\r\n      review_url = p_review_url,\r\n      pin_hash = extensions.crypt(\r\n        p_pin,\r\n        extensions.gen_salt('bf')\r\n      )\r\n  WHERE card_code = p_card_code\r\n    AND pin_hash IS NULL;\r\n\r\n  IF NOT FOUND THEN\r\n    RETURN false;\r\n  END IF;\r\n\r\n  UPDATE public.card_activation\r\n  SET activated_at = now()\r\n  WHERE card_code = p_card_code\r\n    AND activated_at IS NULL;\r\n\r\n  RETURN true;\r\nEND;\r\n$function$\n",
+      "definition_md5": "2c58074f4fb917e87044979c84218986"
+    }
+  ],
+  "relations": [
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": false,
+      "kind": "v",
+      "name": "card_public",
+      "owner": "postgres",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "kind": "r",
+      "name": "card_pin_attempts",
+      "owner": "postgres",
+      "options": null
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=awdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "kind": "r",
+      "name": "card",
+      "owner": "postgres",
+      "options": null
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "kind": "r",
+      "name": "card_activation",
+      "owner": "postgres",
+      "options": null
+    }
+  ],
+  "column_acl": [
+    {
+      "acl": null,
+      "table": "card",
+      "column": "id"
+    },
+    {
+      "acl": null,
+      "table": "card",
+      "column": "created_at"
+    },
+    {
+      "acl": [
+        "anon=r/postgres"
+      ],
+      "table": "card",
+      "column": "card_code"
+    },
+    {
+      "acl": [
+        "anon=r/postgres"
+      ],
+      "table": "card",
+      "column": "business_name"
+    },
+    {
+      "acl": [
+        "anon=r/postgres"
+      ],
+      "table": "card",
+      "column": "review_url"
+    },
+    {
+      "acl": null,
+      "table": "card",
+      "column": "pin_hash"
+    },
+    {
+      "acl": null,
+      "table": "card_public",
+      "column": "card_code"
+    },
+    {
+      "acl": null,
+      "table": "card_public",
+      "column": "business_name"
+    },
+    {
+      "acl": null,
+      "table": "card_public",
+      "column": "review_url"
+    }
+  ],
+  "captured_at": "2026-11-05T06:28:13.241552+00:00",
+  "constraints": [
+    {
+      "name": "card_activation_card_code_fkey",
+      "table": "card_activation",
+      "definition": "FOREIGN KEY (card_code) REFERENCES card(card_code)"
+    },
+    {
+      "name": "card_activation_pkey",
+      "table": "card_activation",
+      "definition": "PRIMARY KEY (card_code)"
+    },
+    {
+      "name": "card_code_unique",
+      "table": "card",
+      "definition": "UNIQUE (card_code)"
+    },
+    {
+      "name": "card_pin_attempts_pkey",
+      "table": "card_pin_attempts",
+      "definition": "PRIMARY KEY (card_code)"
+    },
+    {
+      "name": "card_pkey",
+      "table": "card",
+      "definition": "PRIMARY KEY (id)"
+    }
+  ],
+  "database_version": "17.11"
+}

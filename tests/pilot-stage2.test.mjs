@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {checkSQL,assertScope} from '../scripts/pilot-stage2.mjs';
+test('Only the reviewed three SQL controls are accepted',()=>checkSQL());
+const initial={protectedFP:'a',generateDigest:'b',nonPilotDigest:'c',identity_hash:'d',inventory_identity_hash:'e',quota:{outside:'q'},actors:[],owner_count:0};
+test('Unrelated rows and card identity must remain unchanged',()=>{for(const key of ['protectedFP','generateDigest','nonPilotDigest','identity_hash','inventory_identity_hash'])assert.throws(()=>assertScope(initial,{...initial,[key]:'wrong'}));});
+test('Only pilot attempt actors may change quota',()=>{assertScope(initial,{...initial,quota:{outside:'q',actor:'new'},actors:['actor']});assert.throws(()=>assertScope(initial,{...initial,quota:{outside:'changed'}}));assert.throws(()=>assertScope(initial,{...initial,quota:{}}));assert.throws(()=>assertScope(initial,{...initial,quota:{outside:'q',unknown:'new'}}));});
+test('Exactly one consistent Google owner is allowed',()=>{assertScope(initial,{...initial,owner_count:1,active:true,inventory:'claimed',google_owner:true,audit_matches:true});for(const key of ['active','google_owner','audit_matches'])assert.throws(()=>assertScope(initial,{...initial,owner_count:1,active:true,inventory:'claimed',google_owner:true,audit_matches:true,[key]:false}));assert.throws(()=>assertScope(initial,{...initial,owner_count:2}));});

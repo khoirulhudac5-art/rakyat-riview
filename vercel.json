@@ -2,6 +2,14 @@
 {
   "rewrites": [
     {
+      "source": "/r/iKRb7_7PyK6kg4Ye7EqvOhYu",
+      "destination": "/api/pilot-redirect?code=iKRb7_7PyK6kg4Ye7EqvOhYu"
+    },
+    {
+      "source": "/r/iKRb7_7PyK6kg4Ye7EqvOhYu/",
+      "destination": "/api/pilot-redirect?code=iKRb7_7PyK6kg4Ye7EqvOhYu"
+    },
+    {
       "source": "/r/:code",
       "destination": "/r/001/index.html"
     },

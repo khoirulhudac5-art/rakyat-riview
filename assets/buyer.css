@@ -317,6 +317,16 @@ input[type=checkbox] { accent-color: #247c47; }
   .topbar .demo-pill { padding: 5px 6px; font-size: 9px; }
   .topbar .avatar { width: 28px; height: 28px; font-size: 10px; }
 }
+/* Supplied R multicolor artwork: preserve its full aspect ratio and colors. */
+.rr-logo { display: block; width: 72px; height: 48px; object-fit: contain; flex-shrink: 0; border-radius: 8px; }
+.brand .brand-mark, .mobile-brand .mobile-brand-mark { width: auto; height: auto; background: none; box-shadow: none; border-radius: 0; }
+.physical-top .rr-logo { width: 54px; height: 36px; }
+.hero-card-front .rr-logo { display: inline-block; vertical-align: middle; width: 42px; height: 28px; margin-right: 5px; }
+@media (max-width: 959px) {
+  .mobile-brand { gap: 6px; }
+  .mobile-brand .rr-logo { width: 51px; height: 34px; }
+  .mobile-brand-name { font-size: 13px; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }

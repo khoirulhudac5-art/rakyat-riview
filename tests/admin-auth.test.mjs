@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { createHmac } from "node:crypto";
+import { createHmac, createHash } from "node:crypto";
 import { Script } from "node:vm";
 import { sessionCookie, SESSION_SECONDS } from "../lib/admin-session.mjs";
 
@@ -86,11 +86,57 @@ test("admin authentication and protected handlers (mocked upstream only)", async
       assert.equal(created.statusCode, 200);
       assert.equal(created.body.card_code, "999");
       assert.match(created.body.activation_code, /^RR-999-[A-F0-9]{12}$/);
-      assert.equal(calls.length, 3);
+      assert.equal(calls.length, 2);
       assert.ok(calls.every(item => item.url.startsWith("https://supabase.invalid/")));
-      const stored = JSON.parse(calls[2].options.body);
-      assert.match(stored.activation_code_hash, /^[a-f0-9]{64}$/);
+      assert.equal(calls[1].url, "https://supabase.invalid/rest/v1/rpc/create_review_card");
+      const stored = JSON.parse(calls[1].options.body);
+      assert.equal(stored.p_card_code, "999");
+      assert.match(stored.p_activation_code_hash, /^[a-f0-9]{64}$/);
+      assert.equal(stored.p_activation_code_hash, createHash("sha256").update(created.body.activation_code).digest("hex"));
+      assert.deepEqual(Object.keys(created.body).sort(), ["activation_code", "card_code", "card_url", "success"]);
+      assert.equal(created.body.card_url, "https://rakyat-riview.vercel.app/r/999");
       assert.ok(!JSON.stringify(stored).includes(created.body.activation_code));
+    });
+
+    await t.test("invalid codes never reach RPC; leading zeroes are preserved", async () => {
+      calls = [];
+      for (const card_code of ["12", "12345678901", "abc", "123-4", 123, null]) {
+        assert.equal((await call(create, { method: "POST", cookie, headers: adminHeaders, body: { card_code } })).statusCode, 400);
+      }
+      assert.equal(calls.length, 0);
+      const result = await call(create, { method: "POST", cookie, headers: adminHeaders, body: { card_code: "001" } });
+      assert.equal(result.body.card_code, "001");
+      assert.match(result.body.activation_code, /^RR-001-[A-F0-9]{12}$/);
+      assert.equal(calls.length, 1);
+      assert.equal(JSON.parse(calls[0].options.body).p_card_code, "001");
+    });
+
+    await t.test("RPC failure and network failure never fall back to separate writes", async () => {
+      const originalFetch = globalThis.fetch;
+      const originalLog = console.error;
+      console.error = () => {};
+      try {
+        for (const upstreamStatus of [409, 400, 404, 500]) {
+          const requests = [];
+          globalThis.fetch = async url => {
+            requests.push(url);
+            return { ok: false, status: upstreamStatus, text: async () => "mock RPC failure" };
+          };
+          const result = await call(create, { method: "POST", cookie, headers: adminHeaders, body: { card_code: "001" } });
+          assert.equal(result.statusCode, 400);
+          assert.deepEqual(Object.keys(result.body), ["error"]);
+          assert.deepEqual(requests, ["https://supabase.invalid/rest/v1/rpc/create_review_card"]);
+        }
+        let attempts = 0;
+        globalThis.fetch = async () => { attempts++; throw new Error("mock network failure"); };
+        const result = await call(create, { method: "POST", cookie, headers: adminHeaders, body: { card_code: "001" } });
+        assert.equal(result.statusCode, 500);
+        assert.deepEqual(result.body, { error: "Terjadi gangguan server" });
+        assert.equal(attempts, 1);
+      } finally {
+        globalThis.fetch = originalFetch;
+        console.error = originalLog;
+      }
     });
 
     await t.test("logout clears cookie with identical scope, including expired sessions", async () => {

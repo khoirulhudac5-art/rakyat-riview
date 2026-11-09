@@ -15,9 +15,12 @@
 
     async function bukaUlasan() {
       try {
+        const cardCode = decodeURIComponent(window.location.pathname.match(/\/r\/([^/]+)/)?.[1] || '');
+        if (!/^[a-zA-Z0-9_-]{1,30}$/.test(cardCode)) throw new Error('Kode kartu tidak valid');
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/card_public?card_code=eq.${window.location.pathname.match(/\/r\/([^/]+)/)?.[1]}&select=review_url`,
+          `${SUPABASE_URL}/rest/v1/card_public?card_code=eq.${encodeURIComponent(cardCode)}&select=review_url`,
           {
+            cache: 'no-store',
             headers: {
               apikey: SUPABASE_KEY
             }
@@ -29,8 +32,37 @@
         const data = await response.json();
         const url = data[0]?.review_url;
 
+        // Unclaimed V2 rows are intentionally hidden from public list queries.
+        // A targeted RPC can recognize a scanned code without listing stock IDs.
+        if (Array.isArray(data) && data.length === 0) {
+          const statusResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/buyer_public_card_status`, {
+            method: 'POST',
+            cache: 'no-store',
+            headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_card_code: cardCode })
+          });
+          const state = statusResponse.ok ? await statusResponse.json() : null;
+          if (state?.code === cardCode && state.activation_state === 'inactive' && state.claim_allowed === true) {
+            window.location.replace('/pembeli/mulai.html?card=' + encodeURIComponent(cardCode));
+            return;
+          }
+        }
+
+        // An existing unconfigured card may prepare a draft, never claim ownership.
+        if (data.length === 1 && !url) {
+          window.location.replace('/pembeli/mulai.html?card=' + encodeURIComponent(cardCode));
+          return;
+        }
+
         if (!url || !/^https:\/\//i.test(url)) {
           throw new Error("Link belum tersedia");
+        }
+        const target = new URL(url);
+        const allowedHosts = ['maps.app.goo.gl','maps.google.com','www.google.com','google.com','search.google.com','www.google.co.id','google.co.id'];
+        if (target.username || target.password || target.port || !allowedHosts.includes(target.hostname) ||
+          (['www.google.com','google.com','www.google.co.id','google.co.id'].includes(target.hostname) && !target.pathname.startsWith('/maps') && target.pathname !== '/local/writereview') ||
+          (target.hostname === 'search.google.com' && target.pathname !== '/local/writereview')) {
+          throw new Error('Tujuan kartu tidak valid');
         }
 
         window.location.replace(url);

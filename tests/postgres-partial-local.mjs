@@ -1,0 +1,55 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {migrationStep,resumeSQL,controlledPauseSQL,pauseBody,fingerprintSQL,files} from '../scripts/v2-migration-control.mjs';
+export async function runPartialTests({sql,run,base,root}){
+ const db='v2_partial',checks=[];let serial=0;
+ const q=async s=>{const f=path.join(base,'partial-query-'+(++serial)+'.sql');fs.writeFileSync(f,s);const r=await run('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-d',db,'-c','SET ROLE postgres','-f',f],true);if(r.code)throw {reason:r.err.match(/ERROR:\s*([^\r\n]+)/)?.[1]||'Partial SQL failure'};return r.out.replaceAll('\r\n','\n').trim();};
+ const check=(name,ok)=>{if(!ok)throw {reason:name};checks.push({name,passed:true});fs.writeFileSync(path.join(base,'partial-progress.json'),JSON.stringify(checks,null,2));};
+ const denied=async(s,expected=/permission denied|V2 writes paused|Migration checkpoint\/hash\/schema mismatch/)=>{try{await q(s);return false;}catch(e){if(!expected.test(e.reason||''))throw e;return true;}};
+ const strict=JSON.parse(await q(fs.readFileSync('supabase/existing/preflight_strict.sql','utf8')));fs.writeFileSync(path.join(base,'strict-preflight.json'),JSON.stringify(strict,null,2));check('exact reviewed baseline matches restored latest backup',Object.values(strict).every(v=>v===true));
+ const before=await q("SELECT md5(coalesce(jsonb_agg(to_jsonb(c) ORDER BY id)::text,'')) FROM public.card c");
+ const max=await q('SELECT max(id) FROM public.card');
+ await sql("CREATE ROLE rr_v2_extra NOLOGIN; GRANT rr_v2_extra TO authenticated; ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO rr_v2_extra",db);
+ check('inherited execute grants abort before migration commit',await denied(migrationStep(1),/Effective RPC access remains open/));
+ await sql("ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM rr_v2_extra; REVOKE rr_v2_extra FROM authenticated; DROP ROLE rr_v2_extra",db);
+ for(let stage=1;stage<=6;stage++){
+  check('failure at stage '+stage+' rolls back',await denied(migrationStep(stage,{fail:true}),/Injected stage failure/));
+  check('failed stage retains checkpoint '+stage,stage===1?await q("SELECT to_regclass('rr_v2_control.state') IS NULL")==='t':await q('SELECT stage FROM rr_v2_control.state')===String(stage-1));
+  const transaction=migrationStep(stage).replace(/COMMIT;$/,()=>`DO $$ BEGIN PERFORM pg_sleep(1); END $$; COMMIT;`);
+  const pending=q(transaction);pending.catch(()=>{});await new Promise(r=>setTimeout(r,150));
+  check('JWT role has no callable V2 RPC during stage '+stage,await q("SELECT NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND (p.proname LIKE 'buyer_%' OR p.proname LIKE 'admin_%') AND (has_function_privilege('authenticated',p.oid,'EXECUTE') OR has_function_privilege('anon',p.oid,'EXECUTE') OR has_function_privilege('service_role',p.oid,'EXECUTE')))")==='t');
+  await pending;
+  check('committed checkpoint '+stage,await q('SELECT stage FROM rr_v2_control.state')===String(stage));
+  check('ambiguous-commit retry refuses duplicate stage '+stage,await denied(migrationStep(stage),/Already initialized|Migration checkpoint\/hash\/schema mismatch/));
+  check('authenticated direct RPC denied '+stage,await denied('BEGIN; SET LOCAL ROLE authenticated; SELECT public.buyer_list_cards(); COMMIT;'));
+  check('all direct JWT/Admin RPC access closed at stage '+stage,await q("SELECT NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND (p.proname LIKE 'buyer_%' OR p.proname LIKE 'admin_%') AND (has_function_privilege('authenticated',p.oid,'EXECUTE') OR has_function_privilege('anon',p.oid,'EXECUTE') OR has_function_privilege('service_role',p.oid,'EXECUTE')))")==='t');
+  await q('BEGIN;'+pauseBody(false)+'COMMIT;');await q('BEGIN;'+pauseBody(false)+'COMMIT;');
+  check('partial pause is repeatable at stage '+stage,await q("SELECT fingerprint=("+fingerprintSQL+") FROM rr_v2_control.state")==='t');
+  if(stage<6)check('early activation refused '+stage,await denied(resumeSQL()));
+  check('legacy public read remains available '+stage,Number(await q('BEGIN; SET LOCAL ROLE anon; SELECT count(*) FROM public.card_public; COMMIT;'))>0);
+  const legacyCode='PARTIAL-STAGE-'+stage,activation='partial-stage-activation-'+stage;
+  await q(`BEGIN; SET LOCAL ROLE service_role; INSERT INTO public.card(card_code) VALUES('${legacyCode}'); INSERT INTO public.card_activation(card_code,activation_code_hash) VALUES('${legacyCode}',encode(extensions.digest('${activation}','sha256'),'hex')); COMMIT;`);
+  check('V1 activation and PIN edit while closed '+stage,await q(`BEGIN; SET LOCAL ROLE service_role; SELECT public.activate_review_card('${legacyCode}','${activation}','Local V1','https://www.google.com/maps','local-pin'); SELECT public.update_card_review_url('${legacyCode}','local-pin','https://www.google.com/maps'); COMMIT;`)==='t\nt');
+  await q('ALTER TABLE public.card ADD COLUMN local_unreviewed_drift text');
+  check('schema drift refuses continuation/resume '+stage,await denied(stage<6?migrationStep(stage+1):resumeSQL()));
+  await q('ALTER TABLE public.card DROP COLUMN local_unreviewed_drift');
+ }
+ await q(resumeSQL());check('controlled resume opens only after six stages',await q("SELECT state FROM rr_v2_control.state")==='open');
+ const legacy="PARTIAL-V1",url='https://search.google.com/local/writereview?placeid=ChITestFixtureOnly';
+ await q(`INSERT INTO public.card(card_code) VALUES('${legacy}'); INSERT INTO public.card_activation(card_code,activation_code_hash) VALUES('${legacy}',encode(extensions.digest('partial-unique-activation','sha256'),'hex'));`);
+ check('V1 activation survives closed/resumed rollout',await q(`BEGIN; SET LOCAL ROLE service_role; SELECT public.activate_review_card('${legacy}','partial-unique-activation','Partial V1','${url}','local-pin'); COMMIT;`)==='t');
+ const A='b1111111-1111-4111-8111-111111111111',B='b2222222-2222-4222-8222-222222222222';
+ await q(`INSERT INTO auth.users(id,email) VALUES('${A}','partial-a@example.test'),('${B}','partial-b@example.test'); INSERT INTO auth.identities(user_id,provider_id,identity_data,provider) VALUES('${A}','partial-a','{"sub":"partial-a"}','google'),('${B}','partial-b','{"sub":"partial-b"}','google');`);
+ const code=JSON.parse(await q('BEGIN; SET LOCAL ROLE service_role; SELECT json_agg(card_code) FROM public.admin_create_v2_cards(1); COMMIT;'))[0];
+ const claim=uid=>q(`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL "request.jwt.claim.sub"='${uid}'; SELECT public.buyer_first_claim('${code}','Local partial','${url}'); COMMIT;`);
+ const race=(await Promise.all([claim(A),claim(B)])).map(JSON.parse);check('two-account first claim after resume has one winner',race.filter(r=>r.success).length===1);
+ await q(controlledPauseSQL());
+ check('emergency pause after open blocks direct service write',await denied(`BEGIN; SET LOCAL ROLE service_role; UPDATE public.card SET business_name='denied' WHERE card_code='${code}'; COMMIT;`));
+ check('legacy PIN update still allowed while V2 paused',await q(`BEGIN; SET LOCAL ROLE service_role; SELECT public.update_card_review_url('${legacy}','local-pin','${url}'); COMMIT;`)==='t');
+ await q(resumeSQL());check('emergency pause resumes non-destructively',await q("SELECT state FROM rr_v2_control.state")==='open');
+ check('original V1 rows unchanged',before===await q("SELECT md5(coalesce(jsonb_agg(to_jsonb(c)-'claim_mode'-'v2_activated_at' ORDER BY id)::text,'')) FROM public.card c WHERE id<="+max));
+ await q('ALTER TABLE public.card ADD COLUMN unexpected_after_open text');await q(controlledPauseSQL());
+ check('pause with unexpected drift requires review',await q('SELECT state FROM rr_v2_control.state')==='review_required');
+ check('drift cannot be laundered through pause/resume',await denied(resumeSQL()));
+ fs.writeFileSync(path.join(base,'partial-tests.json'),JSON.stringify({status:'PASSED',tests:checks.length,checks,realGoogleJWT:false,productionConnected:false},null,2));return {status:'PASSED',tests:checks.length};
+}
