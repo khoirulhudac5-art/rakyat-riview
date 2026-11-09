@@ -288,7 +288,6 @@ BEGIN
   RETURN jsonb_build_object('success',true,'code','claimed');
 END;
 $f$;
-REVOKE ALL ON FUNCTION public.buyer_first_claim(text,text,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.buyer_first_claim(text,text,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.buyer_first_claim(text,text,text) FROM PUBLIC,anon,authenticated;
 
 COMMIT;
