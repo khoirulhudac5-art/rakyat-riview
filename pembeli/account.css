@@ -153,3 +153,463 @@ body[data-page="dashboard"] .account-nav>a[href="dashboard.html"]{background:#ee
 .public-review-example{margin-top:18px;padding-top:4px;border-top:1px solid #dfe7f4}.public-review-example p{font-size:12px}
 .review-fallback-body .simulation-tag{display:inline-block;color:#95631c;font-size:9px;letter-spacing:.7px;border:1px solid #f0dcae;background:#fff6df;border-radius:4px;padding:3px 6px}
 @media(max-width:480px){.review-fallback-body .btn{width:100%}.local-review-fallback>summary{font-size:12px}}
+
+/* Lynk.id Inspired Modern Centered Auth Layout (Rakyat Review Design System) */
+.lynk-auth-container {
+  max-width: 440px;
+  margin: 36px auto 50px;
+  padding: 0 16px;
+  min-width: 0;
+}
+.lynk-auth-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.lynk-auth-header .rr-logo {
+  display: inline-block;
+  width: 72px;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+.lynk-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  color: #1e293b;
+  margin: 0 0 6px;
+  line-height: 1.25;
+}
+.lynk-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.6;
+}
+.lynk-auth-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 30px 26px;
+  box-shadow: 0 4px 18px rgba(33, 62, 110, 0.05);
+}
+.field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.auth-text-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #306cce;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.auth-text-link:hover {
+  text-decoration: underline;
+}
+.auth-text-link.bold {
+  font-weight: 600;
+  font-size: 13px;
+}
+.password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.password-wrap input {
+  width: 100%;
+  padding-right: 44px !important;
+}
+.btn-toggle-pw {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s;
+}
+.btn-toggle-pw:hover {
+  color: #1e293b;
+}
+.btn-auth-submit {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 48px;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+.auth-divider span {
+  padding: 0 12px;
+  text-transform: lowercase;
+}
+.google-btn {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.google-btn:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+.auth-toggle-note {
+  text-align: center;
+  margin: 22px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   Tahap 3 Aktivasi: Desain Pilihan Akun, Ringkasan, & Mobile Optimization
+   ========================================================================== */
+
+/* 1. Ringkasan Informasi Kartu (Collapsible Accordion) */
+.card-summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+.summary-toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #f0fdf4;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+.summary-toggle-btn:hover {
+  background: #dcfce7;
+}
+.summary-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.summary-check-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.summary-toggle-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #14532d;
+}
+.summary-chevron {
+  color: #16a34a;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.summary-toggle-btn[aria-expanded="true"] .summary-chevron {
+  transform: rotate(180deg);
+}
+.summary-toggle-btn[aria-expanded="true"] {
+  border-bottom-color: #bbf7d0;
+}
+.summary-detail-panel {
+  padding: 14px;
+  background: #ffffff;
+}
+.summary-info-grid {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.summary-val {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.summary-val.link-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: #2563eb;
+  word-break: break-all;
+}
+.summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* 2. Dua Kartu Pilihan Berdampingan */
+.account-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.account-choice-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 84px;
+  padding: 14px 8px;
+  border-radius: 12px;
+  border: 2px solid;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  text-align: center;
+  user-select: none;
+}
+.choice-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.choice-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.choice-check {
+  display: none;
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+}
+.account-choice-card.active .choice-check {
+  display: flex;
+}
+
+/* Biru — Pembeli Baru (Khas KPI Total Scan #1a73e8) */
+.choice-blue {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1a73e8;
+}
+.choice-blue:hover:not(.active) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+.choice-blue.active {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.28);
+}
+.choice-blue.active .choice-check {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Kuning — Sudah Punya Akun (Khas KPI Total Kartu Dimiliki #f59e0b) */
+.choice-yellow {
+  background: #fefce8;
+  border-color: #fde68a;
+  color: #b45309;
+}
+.choice-yellow:hover:not(.active) {
+  background: #fef9c3;
+  border-color: #fcd34d;
+}
+.choice-yellow.active {
+  background: #f59e0b;
+  border-color: #d97706;
+  color: #1f2937;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.28);
+}
+.choice-yellow.active .choice-check {
+  background: rgba(0, 0, 0, 0.12);
+  color: #1f2937;
+}
+
+/* 3. Petunjuk Otomatis (Dynamic Hint Box) */
+.dynamic-hint-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin-bottom: 16px;
+}
+.hint-info-icon {
+  color: #1a73e8;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.dynamic-hint-box p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #1e40af;
+}
+
+/* 4. Connected User Box (Jika Pembeli Sudah Login) */
+.connected-user-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #f0f7ff;
+  border: 1px solid #c7dcfb;
+  border-left: 4px solid #1a73e8;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.connected-user-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #e1edfe;
+  color: #1a73e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.connected-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #1a73e8;
+  margin-bottom: 2px;
+}
+.connected-name-email {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px;
+}
+.connected-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* 5. Modal Lupa Password */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-dialog {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.modal-header h3 {
+  font-size: 18px;
+  margin: 0;
+  color: #1e293b;
+}
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+}
+.modal-close-btn:hover {
+  color: #0f172a;
+}
+
+/* Responsivitas Layar Kecil (HP) */
+@media (max-width: 400px) {
+  .account-choice-card {
+    padding: 12px 6px;
+    min-height: 78px;
+  }
+  .choice-label {
+    font-size: 12.5px;
+  }
+  .choice-check {
+    width: 17px;
+    height: 17px;
+    top: 5px;
+    right: 5px;
+  }
+  .summary-toggle-title {
+    font-size: 12.5px;
+  }
+}

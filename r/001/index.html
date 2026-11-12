@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -35,15 +34,28 @@
         // Unclaimed V2 rows are intentionally hidden from public list queries.
         // A targeted RPC can recognize a scanned code without listing stock IDs.
         if (Array.isArray(data) && data.length === 0) {
-          const statusResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/buyer_public_card_status`, {
-            method: 'POST',
-            cache: 'no-store',
-            headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ p_card_code: cardCode })
-          });
-          const state = statusResponse.ok ? await statusResponse.json() : null;
+          let state = null;
+          try {
+            const statusResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/buyer_v2_public_card_status`, {
+              method: 'POST',
+              cache: 'no-store',
+              headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ p_card_code: cardCode })
+            });
+            if (statusResponse.ok) state = await statusResponse.json();
+          } catch {}
+
+          if (!state) {
+            try {
+              const localResponse = await fetch('/api/buyer-status?card=' + encodeURIComponent(cardCode), { cache: 'no-store' });
+              if (localResponse.ok) state = await localResponse.json();
+            } catch {}
+          }
+
           if (state?.code === cardCode && state.activation_state === 'inactive' && state.claim_allowed === true) {
-            window.location.replace('/pembeli/mulai.html?card=' + encodeURIComponent(cardCode));
+            const params = new URLSearchParams(window.location.search);
+            params.set('card', cardCode);
+            window.location.replace('/pembeli/mulai.html?' + params.toString());
             return;
           }
         }

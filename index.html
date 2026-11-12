@@ -2,6 +2,16 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+  <script>
+    (function() {
+      var hash = window.location.hash || '';
+      var search = window.location.search || '';
+      if ((hash && (hash.indexOf('access_token=') !== -1 || hash.indexOf('error=') !== -1 || hash.indexOf('code=') !== -1)) ||
+          (search && (search.indexOf('access_token=') !== -1 || search.indexOf('error=') !== -1 || search.indexOf('code=') !== -1))) {
+        window.location.replace('/pembeli/auth-callback.html' + search + hash);
+      }
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rakyat Review</title>

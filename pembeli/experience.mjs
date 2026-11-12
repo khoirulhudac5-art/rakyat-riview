@@ -21,4 +21,6 @@ function mount(){
     auth.after(button,note);button.onclick=async()=>{button.disabled=true;try{await googleLogin('/pembeli/dashboard.html');}catch(e){note.textContent=e.message;button.disabled=false;}};
   }
 }
-new MutationObserver(mount).observe(document.getElementById('content'),{subtree:true,childList:true});mount();
+const target = document.getElementById('content') || document.getElementById('app') || document.body;
+if (target) new MutationObserver(mount).observe(target, { subtree: true, childList: true });
+mount();

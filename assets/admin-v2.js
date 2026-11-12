@@ -30,10 +30,12 @@ const paths = {
   reset:'<path d="M3 10a9 9 0 1 1 1 7M3 4v6h6m3-4v6l4 2"/>',
   nfc:'<path d="M9 6v12m6-12v12M9 6l6 12M5 7a7 7 0 0 0 0 10m14-10a7 7 0 0 1 0 10M2 4a12 12 0 0 0 0 16M22 4a12 12 0 0 1 0 16"/>',
   box:'<path d="m3 7 9-4 9 4-9 5-9-5Zm0 0v11l9 4 9-4V7m-9 5v10M7 5l9 5"/>',
+  archive:'<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"/>',
+  more:'<circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/>',
 };
 const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.card}</svg>`;
 const logo = '<img src="/assets/rakyat-review-logo.png" alt="" width="38" height="38"><span><strong>Rakyat Review</strong><small>Admin workspace</small></span>';
-const state = {mode:'unknown',cards:[],statistics:null,loaded:false,capabilities:{list:false,create:false,reset:false,audit:false},view:'cards',query:'',filter:'all',selected:null,resetCard:null,busy:false,knownActivationLinks:new Map(),lastGeneratedBatch:null,reissueTarget:null};
+const state = {mode:'unknown',cards:[],statistics:null,loaded:false,capabilities:{list:false,create:false,reset:false,audit:false,archive:false},view:'cards',query:'',archiveQuery:'',filter:'all',selected:null,resetCard:null,archiveTarget:null,busy:false,knownActivationLinks:new Map(),lastGeneratedBatch:null,reissueTarget:null};
 let noticeTimer;
 
 function notify(message, error=false) {
@@ -82,36 +84,47 @@ function renderLogin(message='') {
 
 function renderShell() {
   app.setAttribute('aria-busy','false');
-  app.innerHTML=`<aside class="sidebar" id="admin-sidebar" aria-label="Navigasi Admin"><a class="brand" href="/admin-v2.html">${logo}</a><button class="icon-btn mobile-close" id="menu-close" aria-label="Tutup navigasi">${icon('close')}</button><p class="side-label">WORKSPACE</p><nav><button class="nav-item active" data-view="cards">${icon('grid')} Ringkasan & kartu</button><button class="nav-item" data-view="audit">${icon('history')} Riwayat aktivitas</button></nav><p class="side-label">${state.mode==='synthetic'?'PREVIEW PRODUK':'APLIKASI'}</p><a class="nav-item" href="/pembeli/dashboard.html">${icon('users')} Dashboard pembeli ${icon('external')}</a>${state.mode==='synthetic'?`<a class="nav-item" href="/preview-new-card">${icon('scan')} Coba scan kartu ${icon('external')}</a>`:''}<div class="sidebar-bottom"><div class="side-note"><div class="color-bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p style="margin-top:12px">Satu kartu. Satu URL permanen.<br>QR dan NFC tetap terhubung.</p></div><button class="nav-item" id="admin-logout">${icon('logout')} Keluar Admin</button></div></aside><button class="backdrop" id="menu-backdrop" aria-label="Tutup navigasi" hidden></button><div class="layout"><header class="topbar"><button class="icon-btn menu-toggle" id="menu-open" aria-label="Buka navigasi" aria-expanded="false" aria-controls="admin-sidebar">${icon('menu')}</button><a class="brand" href="/admin-v2.html">${logo}</a><div class="top-context">Workspace <span style="margin:0 12px;color:#c6cfdd">/</span><strong id="breadcrumb">Ringkasan & kartu</strong></div><span class="tag ${state.mode==='synthetic'?'synthetic':''}">${state.mode==='synthetic'?'SIMULASI':'TERBATAS'}</span><div class="admin-identity"><span class="avatar">AD</span><span>Administrator</span></div></header><main class="content" id="main"><div id="page-error" class="inline-error" role="alert" hidden></div><section class="section" id="inventory-section"><div class="heading"><div><div class="eyebrow">RAKYAT REVIEW · ADMIN V2</div><h1>Setiap kartu, tertata.</h1><p>Siapkan inventaris dan kelola aktivasi, dari kartu pertama hingga ribuan usaha.</p></div><div class="heading-actions"><button class="btn" id="reload-cards">${icon('refresh')} Muat ulang</button><button class="btn primary" id="open-create" ${state.capabilities.create?'':'disabled'}>${icon('plus')} Buat kartu</button></div></div>${environment()}<div class="metrics" id="admin-metrics">${metricsMarkup()}</div><div class="overview"><section class="panel"><div class="panel-heading"><div><h2>Aktivitas kartu</h2><p>Scan dan pengalihan menuju tujuan review.</p></div>${icon('chart')}</div><div class="chart-content" id="admin-chart"><div class="no-chart">Memuat aktivitas…</div></div></section><section class="panel production-panel"><div class="panel-heading"><div><h2>Siap untuk setiap usaha</h2><p>Produksi dengan alur yang konsisten.</p></div>${icon('box')}</div><div class="production-box"><div class="production-mark">${icon('nfc')}<div><strong>Satu identitas. QR + NFC.</strong><small>Gunakan URL permanen yang sama pada kedua media.</small></div></div><p>Kartu baru langsung siap diklaim. Pemilik pertama dapat mengelola nama usaha dan tujuan review melalui akunnya.</p><button class="btn" id="production-export">${icon('download')} Ekspor data produksi</button></div></section></div><section class="panel" aria-labelledby="inventory-title"><div class="panel-heading inventory-heading"><div><h2 id="inventory-title">Inventaris kartu</h2><span class="count" id="inventory-count">0</span></div>${icon('card')}</div><div class="tools"><label class="search-wrap"><span class="sr-only" style="position:absolute;clip:rect(0,0,0,0)">Cari nama usaha, ID, atau pemilik kartu</span>${icon('search')}<input id="card-search" class="field" type="search" placeholder="Cari usaha, ID kartu, atau pemilik…" autocomplete="off"></label><select class="field" id="card-filter" aria-label="Filter status kartu"><option value="all">Semua status</option><option value="active">Sudah aktif</option><option value="ready">Siap diklaim</option></select><button class="btn" id="export-cards">${icon('download')} Ekspor CSV</button><button class="btn" id="download-qr-zip">${icon('download')} Download ZIP QR</button></div><div id="inventory-body" aria-live="polite"><div class="loading-row">Memuat kartu…<span class="skeleton"></span><span class="skeleton"></span></div></div><div class="table-footer"><span id="inventory-result">Memuat inventaris…</span><span>Identitas kartu dan URL permanen tetap dipertahankan.</span></div></section><div id="restricted-reset-host"></div><p class="integration-note">${icon('info')}<span>Scan adalah kunjungan ke URL kartu, bukan jumlah review. Jumlah dan riwayat Google Review belum tersedia karena belum ada integrasi resmi Google Business Profile yang terotorisasi.</span></p></section><section class="section" id="audit-section" hidden><div class="heading"><div><div class="eyebrow">JEJAK OPERASIONAL</div><h1>Riwayat aktivitas.</h1><p>Perubahan inventaris dan Reset Aktivasi tercatat untuk ditinjau kembali.</p></div><button class="btn" id="reload-audit">${icon('refresh')} Muat ulang</button></div>${environment()}<section class="panel"><div class="panel-heading inventory-heading"><h2>Log aktivitas Admin</h2>${icon('shield')}</div><div id="audit-body" aria-live="polite"></div></section></section><footer class="page-foot"><span>Rakyat Review · Admin V2</span><span>${state.mode==='synthetic'?'Preview lokal · data sintetis':'Akses mengikuti izin server'}</span></footer></main></div>${dialogsMarkup()}`;
+  app.innerHTML=`<aside class="sidebar" id="admin-sidebar" aria-label="Navigasi Admin"><a class="brand" href="/admin-v2.html">${logo}</a><button class="icon-btn mobile-close" id="menu-close" aria-label="Tutup navigasi">${icon('close')}</button><p class="side-label">WORKSPACE</p><nav><button class="nav-item active" data-view="cards">${icon('grid')} Ringkasan & kartu</button><button class="nav-item" data-view="archive">${icon('archive')} Arsip <span class="nav-badge" id="archive-count" hidden>0</span></button><button class="nav-item" data-view="audit">${icon('history')} Riwayat aktivitas</button></nav><p class="side-label">${state.mode==='synthetic'?'PREVIEW PRODUK':'APLIKASI'}</p><a class="nav-item" href="/pembeli/dashboard.html">${icon('users')} Dashboard pembeli ${icon('external')}</a>${state.mode==='synthetic'?`<a class="nav-item" href="/preview-new-card">${icon('scan')} Coba scan kartu ${icon('external')}</a>`:''}<div class="sidebar-bottom"><div class="side-note"><div class="color-bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p style="margin-top:12px">Satu kartu. Satu URL permanen.<br>QR dan NFC tetap terhubung.</p></div><button class="nav-item" id="admin-logout">${icon('logout')} Keluar Admin</button></div></aside><button class="backdrop" id="menu-backdrop" aria-label="Tutup navigasi" hidden></button><div class="layout"><header class="topbar"><button class="icon-btn menu-toggle" id="menu-open" aria-label="Buka navigasi" aria-expanded="false" aria-controls="admin-sidebar">${icon('menu')}</button><a class="brand" href="/admin-v2.html">${logo}</a><div class="top-context">Workspace <span style="margin:0 12px;color:#c6cfdd">/</span><strong id="breadcrumb">Ringkasan & kartu</strong></div><span class="tag ${state.mode==='synthetic'?'synthetic':''}">${state.mode==='synthetic'?'SIMULASI':'TERBATAS'}</span><div class="admin-identity"><span class="avatar">AD</span><span>Administrator</span></div></header><main class="content" id="main"><div id="page-error" class="inline-error" role="alert" hidden></div><section class="section" id="inventory-section"><div class="heading"><div><div class="eyebrow">RAKYAT REVIEW · ADMIN V2</div><h1>Setiap kartu, tertata.</h1><p>Siapkan inventaris dan kelola aktivasi, dari kartu pertama hingga ribuan usaha.</p></div><div class="heading-actions"><button class="btn" id="reload-cards">${icon('refresh')} Muat ulang</button><button class="btn primary" id="open-create" ${state.capabilities.create?'':'disabled'}>${icon('plus')} Buat kartu</button></div></div>${environment()}<div class="metrics" id="admin-metrics">${metricsMarkup()}</div><div class="overview"><section class="panel"><div class="panel-heading"><div><h2>Aktivitas kartu</h2><p>Scan dan pengalihan menuju tujuan review.</p></div>${icon('chart')}</div><div class="chart-content" id="admin-chart"><div class="no-chart">Memuat aktivitas…</div></div></section><section class="panel production-panel"><div class="panel-heading"><div><h2>Siap untuk setiap usaha</h2><p>Produksi dengan alur yang konsisten.</p></div>${icon('box')}</div><div class="production-box"><div class="production-mark">${icon('nfc')}<div><strong>Satu identitas. QR + NFC.</strong><small>Gunakan URL permanen yang sama pada kedua media.</small></div></div><p>Kartu baru langsung siap diklaim. Pemilik pertama dapat mengelola nama usaha dan tujuan review melalui akunnya.</p><button class="btn" id="production-export">${icon('download')} Ekspor data produksi</button></div></section></div><section class="panel" aria-labelledby="inventory-title"><div class="panel-heading inventory-heading"><div><h2 id="inventory-title">Inventaris kartu</h2><span class="count" id="inventory-count">0</span></div>${icon('card')}</div><div class="tools"><label class="search-wrap"><span class="sr-only" style="position:absolute;clip:rect(0,0,0,0)">Cari nama usaha, ID, atau pemilik kartu</span>${icon('search')}<input id="card-search" class="field" type="search" placeholder="Cari usaha, ID kartu, atau pemilik…" autocomplete="off"></label><select class="field" id="card-filter" aria-label="Filter status kartu"><option value="all">Semua status</option><option value="active">Sudah aktif</option><option value="ready">Siap diklaim</option></select><button class="btn" id="export-cards">${icon('download')} Ekspor CSV</button><button class="btn" id="download-qr-zip">${icon('download')} Download ZIP QR</button></div><div id="inventory-body" aria-live="polite"><div class="loading-row">Memuat kartu…<span class="skeleton"></span><span class="skeleton"></span></div></div><div class="table-footer"><span id="inventory-result">Memuat inventaris…</span><span>Identitas kartu dan URL permanen tetap dipertahankan.</span></div></section><div id="restricted-reset-host"></div><p class="integration-note">${icon('info')}<span>Scan adalah kunjungan ke URL kartu, bukan jumlah review. Jumlah dan riwayat Google Review belum tersedia karena belum ada integrasi resmi Google Business Profile yang terotorisasi.</span></p></section><section class="section" id="archive-section" hidden><div class="heading"><div><div class="eyebrow">WORKSPACE · ARSIP</div><h1>Arsip kartu.</h1><p>Kartu yang disembunyikan dari daftar utama. QR/NFC dan klaim kartu tetap berfungsi.</p></div><div class="heading-actions"><button class="btn" id="reload-archive">${icon('refresh')} Muat ulang</button></div></div>${environment()}<section class="panel" aria-labelledby="archive-title"><div class="panel-heading inventory-heading"><div><h2 id="archive-title">Kartu diarsipkan</h2><span class="count" id="archive-section-count">0</span></div>${icon('archive')}</div><div class="tools"><label class="search-wrap"><span class="sr-only" style="position:absolute;clip:rect(0,0,0,0)">Cari nama usaha atau kode kartu di arsip</span>${icon('search')}<input id="archive-search" class="field" type="search" placeholder="Cari nama usaha atau kode kartu di arsip…" autocomplete="off"></label></div><div id="archive-body" aria-live="polite"><div class="loading-row">Memuat arsip…<span class="skeleton"></span></div></div><div class="table-footer"><span id="archive-result">Memuat arsip…</span><span>Kartu yang dipulihkan akan kembali ke posisi semula berdasarkan tanggal pembuatan.</span></div></section></section><section class="section" id="audit-section" hidden><div class="heading"><div><div class="eyebrow">JEJAK OPERASIONAL</div><h1>Riwayat aktivitas.</h1><p>Perubahan inventaris dan Reset Aktivasi tercatat untuk ditinjau kembali.</p></div><button class="btn" id="reload-audit">${icon('refresh')} Muat ulang</button></div>${environment()}<section class="panel"><div class="panel-heading inventory-heading"><h2>Log aktivitas Admin</h2>${icon('shield')}</div><div id="audit-body" aria-live="polite"></div></section></section><footer class="page-foot"><span>Rakyat Review · Admin V2</span><span>${state.mode==='synthetic'?'Preview lokal · data sintetis':'Akses mengikuti izin server'}</span></footer></main></div>${dialogsMarkup()}`;
   app.addEventListener('click',handleClick);
   byId('card-search').addEventListener('input',event=>{state.query=event.target.value;renderInventory();});
   byId('card-filter').addEventListener('change',event=>{state.filter=event.target.value;renderInventory();});
+  byId('archive-search').addEventListener('input',event=>{state.archiveQuery=event.target.value;renderArchive();});
   byId('admin-create-form').addEventListener('submit',createCards);
   byId('admin-reset-form').addEventListener('submit',resetCard);
+  byId('admin-archive-form').addEventListener('submit',confirmArchiveCard);
   for(const id of ['reset-confirmation','reset-reason','reset-ack'])byId(id).addEventListener('input',validateReset);
   if(byId('reissue-ack'))byId('reissue-ack').addEventListener('input',()=>{if(byId('reissue-submit'))byId('reissue-submit').disabled=!byId('reissue-ack').checked||state.busy;});
-  for(const id of ['create-dialog','detail-dialog','reset-dialog','batch-dialog','reissue-dialog'])if(byId(id))byId(id).addEventListener('cancel',event=>{if(state.busy)event.preventDefault();});
+  for(const id of ['create-dialog','detail-dialog','reset-dialog','batch-dialog','reissue-dialog','archive-dialog'])if(byId(id))byId(id).addEventListener('cancel',event=>{if(state.busy)event.preventDefault();});
 }
 
 function metricsMarkup() {
   const loaded=state.capabilities.list&&state.loaded;
-  const values=[loaded?number(state.cards.length):'—',loaded?number(state.cards.filter(c=>c.active).length):'—',loaded?number(state.cards.filter(c=>!c.active&&(!state.readOnly||c.inventory_state==='ready')).length):'—',state.statistics?.available?number(state.statistics.visits):'—'];
-  return [['Tổng kartu','card','Identitas NFC + QR'],['Sudah aktif','check','Memiliki pemilik akun'],['Siap diklaim','box','Langsung siap untuk pembeli'],['Total scan','scan','Kunjungan, bukan Google Review']].map((item,index)=>`<article class="metric"><div class="metric-top"><span>${index===0?'Total kartu':item[0]}</span>${icon(item[1])}</div><div class="metric-value">${values[index]}</div><small>${item[2]}</small></article>`).join('');
+  const visibleCards=state.cards.filter(c=>!c.is_archived);
+  const values=[loaded?number(visibleCards.length):'—',loaded?number(visibleCards.filter(c=>c.active).length):'—',loaded?number(visibleCards.filter(c=>!c.active&&(!state.readOnly||c.inventory_state==='ready')).length):'—',state.statistics?.available?number(state.statistics.visits):'—'];
+  return [['Total kartu','card','Identitas NFC + QR'],['Sudah aktif','check','Memiliki pemilik akun'],['Siap diklaim','box','Langsung siap untuk pembeli'],['Total scan','scan','Kunjungan, bukan Google Review']].map((item,index)=>`<article class="metric"><div class="metric-top"><span>${index===0?'Total kartu':item[0]}</span>${icon(item[1])}</div><div class="metric-value">${values[index]}</div><small>${item[2]}</small></article>`).join('');
 }
 
 function safeUrl(value) {
   try{const url=new URL(value,location.origin);return !url.username&&!url.password&&(url.protocol==='https:'||(url.protocol==='http:'&&url.origin===location.origin&&['127.0.0.1','localhost'].includes(url.hostname)))?url.href:'';}catch{return '';}
 }
+const PRODUCTION_ORIGIN = 'https://rakyat-riview.vercel.app';
+function getProductionPermanentUrl(code){
+  return `${PRODUCTION_ORIGIN}/r/${encodeURIComponent(code)}`;
+}
+
+function formatOrderNumber(num, isActive){
+  const str = String(num || 1).padStart(3, '0');
+  if(!isActive){
+    return `<span class="card-order-num inactive">${escapeHtml(str)}</span>`;
+  }
+  const colors = ['#EA4335', '#FBBC04', '#34A853'];
+  const digits = str.split('').map((ch, idx) => `<span style="color:${colors[idx % colors.length]}">${escapeHtml(ch)}</span>`).join('');
+  return `<span class="card-order-num active">${digits}</span>`;
+}
+
 function permanentUrl(card){
   if(state.urlsAvailable===false||!card?.card_code)return '';
-  const canonical='https://rakyat-riview.vercel.app';
-  const fallback=location.origin===canonical?canonical+'/r/'+encodeURIComponent(card.card_code):'';
-  const candidate=card.card_url||fallback;
-  if(!candidate&&state.readOnly)return '';
-  const value=safeUrl(candidate||card.card_url||'/r/'+encodeURIComponent(card.card_code));
-  if(!value)return '';
-  const url=new URL(value);
-  return url.pathname==='/r/'+encodeURIComponent(card.card_code)&&!url.search&&!url.hash?url.href:'';
+  return `${location.origin}/r/${encodeURIComponent(card.card_code)}`;
 }
 
 function renderChart() {
@@ -132,24 +145,71 @@ async function loadCards() {
   byId('page-error').hidden=true;
   const reload=byId('reload-cards');reload.disabled=true;
   if(!state.capabilities.list){renderInventory();renderChart();renderRestrictedReset();reload.disabled=false;return false;}
-  try{const data=await request('cards');acceptMetadata(data);const normalized=normalizeDashboard(data,{simulation:state.mode==='synthetic'});state.cards=normalized.cards;state.statistics=normalized.statistics;state.loaded=true;byId('admin-metrics').innerHTML=metricsMarkup();renderInventory();renderChart();renderRestrictedReset();return true;}
+  try{
+    const data=await request('cards');
+    acceptMetadata(data);
+    const normalized=normalizeDashboard(data,{simulation:state.mode==='synthetic'});
+    state.cards=normalized.cards;
+    state.cards.sort((a,b)=>{
+      const tA=a.created_at?new Date(a.created_at).getTime():0;
+      const tB=b.created_at?new Date(b.created_at).getTime():0;
+      if(tA!==tB)return tA-tB;
+      return String(a.card_code).localeCompare(String(b.card_code));
+    });
+    state.cards.forEach((c, idx) => {
+      c.sequence_no = idx + 1;
+    });
+    state.statistics=normalized.statistics;
+    state.loaded=true;
+    byId('admin-metrics').innerHTML=metricsMarkup();
+    renderInventory();
+    renderArchive();
+    renderChart();
+    renderRestrictedReset();
+    return true;
+  }
   catch(error){state.cards=[];state.statistics=null;state.loaded=false;if(error.status===401){renderLogin('Sesi Admin berakhir. Silakan masuk kembali.');return false;}byId('admin-metrics').innerHTML=metricsMarkup();renderInventory();renderChart();byId('page-error').textContent=error.message;byId('page-error').hidden=false;byId('inventory-body').innerHTML=`<div class="empty">${icon('info')}<strong>Inventaris belum dapat dimuat</strong><p>${escapeHtml(error.message)}</p><button class="btn" id="retry-cards">Coba lagi</button></div>`;return false;}
   finally{if(byId('reload-cards'))byId('reload-cards').disabled=false;}
 }
 
 function filteredCards() {
   const query=state.query.trim().toLocaleLowerCase('id-ID');
-  return state.cards.filter(card=>(state.filter==='all'||(state.filter==='active'?card.active:!card.active))&&(!query||[card.card_code,card.business_name,card.owner_label].some(value=>String(value||'').toLocaleLowerCase('id-ID').includes(query))));
+  return state.cards.filter(card=>!card.is_archived&&(state.filter==='all'||(state.filter==='active'?card.active:!card.active))&&(!query||[card.card_code,card.business_name,card.owner_label].some(value=>String(value||'').toLocaleLowerCase('id-ID').includes(query))));
+}
+
+function archivedCards() {
+  const query=(state.archiveQuery||'').trim().toLocaleLowerCase('id-ID');
+  return state.cards.filter(card=>card.is_archived&&(!query||[card.card_code,card.business_name,card.owner_label].some(value=>String(value||'').toLocaleLowerCase('id-ID').includes(query))));
 }
 
 function renderInventory() {
-  byId('inventory-count').textContent=number(state.cards.length);
-  for(const id of ['export-cards','production-export','download-qr-zip'])if(byId(id))byId(id).disabled=state.urlsAvailable===false||!state.capabilities.list||state.cards.length===0;
+  const visibleCards=state.cards.filter(c=>!c.is_archived);
+  byId('inventory-count').textContent=number(visibleCards.length);
+  const totalArchived=state.cards.filter(c=>c.is_archived).length;
+  const badge=byId('archive-count');
+  if(badge){badge.textContent=number(totalArchived);badge.hidden=totalArchived===0;}
+  for(const id of ['export-cards','production-export','download-qr-zip'])if(byId(id))byId(id).disabled=state.urlsAvailable===false||!state.capabilities.list||visibleCards.length===0;
   if(!state.capabilities.list){byId('inventory-body').innerHTML=`<div class="empty">${icon('shield')}<strong>Daftar inventaris belum tersedia</strong><p>Kontrak restricted saat ini tidak menyediakan daftar atau pembuatan kartu Admin.<br>Tidak ada RPC asli yang dibuka sebagai pengganti.</p></div>`;byId('inventory-result').textContent='Akses baca inventaris tidak tersedia.';return;}
   const cards=filteredCards();
-  byId('inventory-result').textContent=`Menampilkan ${number(cards.length)} dari ${number(state.cards.length)} kartu`;
-  if(!cards.length){byId('inventory-body').innerHTML=`<div class="empty">${icon('card')}<strong>${state.cards.length?'Kartu tidak ditemukan':'Inventaris Anda siap dimulai'}</strong><p>${state.cards.length?'Coba nama usaha, ID kartu, atau status yang lain.':'Buat kartu pertama. Setiap kartu akan langsung siap diklaim pembeli.'}</p>${state.cards.length||!state.capabilities.create?'':'<button class="btn primary" id="empty-create">'+icon('plus')+' Buat kartu pertama</button>'}</div>`;return;}
-  byId('inventory-body').innerHTML=`<table class="table"><thead><tr><th scope="col">Kartu & usaha</th><th scope="col">Status</th><th scope="col">Pemilik</th><th scope="col">Scan</th><th scope="col">Aksi</th></tr></thead><tbody>${cards.map(card=>`<tr><td><div class="card-identity"><span class="card-initial">${icon(card.active?'card':'nfc')}</span><div><strong>${escapeHtml(card.business_name||'Kartu siap diklaim')}</strong><small class="mono">${escapeHtml(card.card_code)}</small></div></div></td><td><span class="status ${card.active?'active':'ready'}">${activationStatus(card)}</span></td><td class="owner">${escapeHtml(card.owner_label||'Belum ada pemilik')}<small>${card.owner_label?'Terhubung ke akun pembeli':'Klaim pertama menjadi pemilik'}</small></td><td class="scan-count">${state.statistics?.available?number(card.visits):'—'}</td><td><div class="row-action"><button class="btn" data-detail="${escapeHtml(card.card_code)}" aria-label="Detail kartu ${escapeHtml(card.card_code)}">Detail ${icon('arrow')}</button></div></td></tr>`).join('')}</tbody></table>`;
+  byId('inventory-result').textContent=`Menampilkan ${number(cards.length)} dari ${number(visibleCards.length)} kartu`;
+  if(!cards.length){byId('inventory-body').innerHTML=`<div class="empty">${icon('card')}<strong>${visibleCards.length?'Kartu tidak ditemukan':'Inventaris Anda siap dimulai'}</strong><p>${visibleCards.length?'Coba nama usaha, ID kartu, atau status yang lain.':'Buat kartu pertama. Setiap kartu akan langsung siap diklaim pembeli.'}</p>${visibleCards.length||!state.capabilities.create?'':'<button class="btn primary" id="empty-create">'+icon('plus')+' Buat kartu pertama</button>'}</div>`;return;}
+  byId('inventory-body').innerHTML=`<table class="table"><thead><tr><th scope="col">Kartu & usaha</th><th scope="col">Status</th><th scope="col">Pemilik</th><th scope="col">Scan</th><th scope="col">Aksi</th></tr></thead><tbody>${cards.map(card=>`<tr><td><div class="card-identity">${formatOrderNumber(card.sequence_no, card.active)}<span class="card-initial">${icon(card.active?'card':'nfc')}</span><div><strong>${escapeHtml(card.business_name||'Kartu siap diklaim')}</strong><small class="mono">${escapeHtml(card.card_code)}</small></div></div></td><td><span class="status ${card.active?'active':'ready'}">${activationStatus(card)}</span></td><td class="owner">${escapeHtml(card.owner_label||'Belum ada pemilik')}<small>${card.owner_label?'Terhubung ke akun pembeli':'Klaim pertama menjadi pemilik'}</small></td><td class="scan-count">${state.statistics?.available?number(card.visits):'—'}</td><td><div class="row-action"><button class="btn" data-detail="${escapeHtml(card.card_code)}" aria-label="Detail kartu ${escapeHtml(card.card_code)}">Detail ${icon('arrow')}</button><div class="menu-dropdown-wrap"><button class="icon-btn action-menu-btn" data-menu-toggle="${escapeHtml(card.card_code)}" aria-label="Menu kartu ${escapeHtml(card.card_code)}" aria-expanded="false">${icon('more')}</button><div class="action-dropdown" id="dropdown-${escapeHtml(card.card_code)}" hidden><button type="button" class="dropdown-item danger" data-archive-open="${escapeHtml(card.card_code)}">${icon('archive')} Arsipkan Kartu</button></div></div></div></td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderArchive() {
+  const target=byId('archive-body');
+  if(!target)return;
+  const list=archivedCards();
+  const totalArchived=state.cards.filter(c=>c.is_archived).length;
+  if(byId('archive-section-count'))byId('archive-section-count').textContent=number(totalArchived);
+  if(byId('archive-result'))byId('archive-result').textContent=`Menampilkan ${number(list.length)} dari ${number(totalArchived)} kartu diarsipkan`;
+  const badge=byId('archive-count');
+  if(badge){badge.textContent=number(totalArchived);badge.hidden=totalArchived===0;}
+  if(!list.length){
+    target.innerHTML=`<div class="empty">${icon('archive')}<strong>${totalArchived?'Kartu tidak ditemukan di arsip':'Belum ada kartu diarsipkan'}</strong><p>${totalArchived?'Coba cari dengan nama usaha atau kode kartu yang lain.':'Kartu yang Anda arsipkan dari daftar utama akan muncul di sini dan dapat dipulihkan kapan saja.'}</p></div>`;
+    return;
+  }
+  target.innerHTML=`<table class="table"><thead><tr><th scope="col">Kartu & usaha</th><th scope="col">Status</th><th scope="col">Pemilik</th><th scope="col">Scan</th><th scope="col">Aksi</th></tr></thead><tbody>${list.map(card=>`<tr><td><div class="card-identity">${formatOrderNumber(card.sequence_no, card.active)}<span class="card-initial">${icon(card.active?'card':'nfc')}</span><div><strong>${escapeHtml(card.business_name||'Kartu siap diklaim')}</strong><small class="mono">${escapeHtml(card.card_code)}</small></div></div></td><td><span class="status ${card.active?'active':'ready'}">${activationStatus(card)}</span></td><td class="owner">${escapeHtml(card.owner_label||'Belum ada pemilik')}<small>${card.owner_label?'Terhubung ke akun pembeli':'Klaim pertama menjadi pemilik'}</small></td><td class="scan-count">${state.statistics?.available?number(card.visits):'—'}</td><td><div class="row-action" style="gap:6px;"><button class="btn primary" data-restore-card="${escapeHtml(card.card_code)}" aria-label="Pulihkan kartu ${escapeHtml(card.card_code)}">${icon('refresh')} Pulihkan</button><button class="btn" data-detail="${escapeHtml(card.card_code)}" aria-label="Detail kartu ${escapeHtml(card.card_code)}">Detail ${icon('arrow')}</button></div></td></tr>`).join('')}</tbody></table>`;
 }
 
 function activationStatus(card){return card.active?'Sudah aktif':!state.readOnly||card.inventory_state==='ready'?'Siap diklaim':card.inventory_state==='draft'?'Belum siap':'Belum aktif';}
@@ -161,7 +221,7 @@ function renderRestrictedReset() {
 }
 
 function dialogsMarkup() {
-  return `<dialog id="create-dialog" aria-labelledby="create-title"><form id="admin-create-form"><div class="dialog-head"><div><h2 id="create-title">Siapkan kartu baru</h2><p>Identitas unik otomatis, langsung siap diklaim.</p></div><button class="icon-btn" type="button" data-close="create-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div id="create-error" class="inline-error" role="alert" hidden></div><div class="form-group"><label for="create-quantity">Jumlah kartu</label><input class="field" id="create-quantity" type="number" min="1" max="1000" step="1" value="1" required><div class="quantity-presets"><button class="btn" type="button" data-quantity="1">1 kartu</button><button class="btn" type="button" data-quantity="10">10 kartu</button><button class="btn" type="button" data-quantity="50">50 kartu</button><button class="btn" type="button" data-quantity="100">100 kartu</button></div><p class="help">Maksimal 1.000 kartu dalam satu pembuatan.</p></div><div class="production-mark">${icon('nfc')}<div><strong>QR dan NFC menggunakan URL yang sama</strong><small>Ekspor CSV sesudah kartu dibuat untuk menyiapkan produksi.</small></div></div></div><div class="dialog-foot"><button class="btn" type="button" data-close="create-dialog">Batal</button><button class="btn primary" id="create-submit" type="submit">${icon('plus')} Buat kartu</button></div></form></dialog><dialog id="batch-dialog" aria-labelledby="batch-title"><div class="dialog-head"><div><h2 id="batch-title">Kartu Baru Berhasil Disimpan</h2><p id="batch-subtitle"></p></div><button class="icon-btn" type="button" data-close="batch-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div class="warning-box" style="background:#fef7e0;border-color:#f9ab00;color:#202124"><strong>PENTING: Unduh file aktivasi sekarang.</strong><br>Database hanya menyimpan hash token demi keamanan. Link aktivasi ini tidak dapat dibaca kembali dari database setelah sesi browser ini selesai.</div><div style="display:flex;flex-direction:column;gap:10px;margin-top:16px"><button class="btn primary" id="download-private-batch-csv">${icon('download')} Unduh CSV Link Aktivasi (Arsip Privat Admin)</button><button class="btn" id="download-batch-qr-zip">${icon('download')} Unduh ZIP QR Code (${icon('card')} PNG per kartu)</button><button class="btn" id="download-physical-batch-csv">${icon('download')} Unduh CSV Produksi Fisik (Untuk Percetakan & NFC)</button></div><p class="help" style="margin-top:12px">CSV Produksi Fisik bebas token rahasia, aman dikirim ke pihak luar.</p></div><div class="dialog-foot"><button class="btn" type="button" data-close="batch-dialog">Selesai</button></div></dialog><dialog id="reissue-dialog" aria-labelledby="reissue-title"><div class="dialog-head"><div><h2 id="reissue-title">Terbitkan Ulang Link Aktivasi</h2><p id="reissue-card-label" class="mono"></p></div><button class="icon-btn" type="button" data-close="reissue-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div class="warning-box"><strong>Link aktivasi lama akan dibatalkan secara permanen.</strong><br>Token baru akan diterbitkan. Siapa pun yang memegang link lama tidak akan dapat menggunakannya lagi.</div><label class="check-label" style="margin-top:16px"><input id="reissue-ack" type="checkbox" required><span>Saya mengonfirmasi bahwa link lama hilang/batal dan perlu diganti dengan link baru.</span></label></div><div class="dialog-foot"><button class="btn" type="button" data-close="reissue-dialog">Batal</button><button class="btn danger" id="reissue-submit" type="button" disabled>Konfirmasi Terbitkan Ulang</button></div></dialog><dialog id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><h2 id="detail-title">Detail kartu</h2><p>Identitas, kepemilikan, dan URL permanen.</p></div><button class="icon-btn" data-close="detail-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body" id="detail-body"></div><div class="dialog-foot"><button class="btn" data-close="detail-dialog">Tutup</button></div></dialog><dialog id="reset-dialog" aria-labelledby="reset-title"><form id="admin-reset-form"><div class="dialog-head"><div><h2 id="reset-title">Reset Aktivasi</h2><p id="reset-card-label" class="mono"></p></div><button class="icon-btn" type="button" data-close="reset-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div class="warning-box"><strong>Pemilik lama akan kehilangan akses.</strong>Nama usaha, tujuan review, dan kepemilikan dilepas agar kartu dapat diklaim ulang. ID dan URL QR/NFC tetap sama. Tindakan ini dicatat pada audit.</div><div id="reset-error" class="inline-error" role="alert" hidden></div><div class="form-group"><label for="reset-confirmation">Ketik ulang ID kartu</label><input class="field mono" id="reset-confirmation" required autocomplete="off" spellcheck="false"></div><div class="form-group"><label for="reset-reason">Alasan reset</label><textarea class="field" id="reset-reason" required minlength="20" maxlength="1000" placeholder="Jelaskan permintaan dan alasan reset…"></textarea><p class="help">Minimal 20 karakter. Alasan disimpan dalam log aktivitas.</p></div><label class="check-label"><input id="reset-ack" type="checkbox" required><span>Saya memahami bahwa pemilik lama kehilangan akses dan kartu dapat diklaim ulang.</span></label></div><div class="dialog-foot"><button class="btn" type="button" data-close="reset-dialog">Batal</button><button class="btn danger" id="reset-submit" type="submit" disabled>Konfirmasi Reset Aktivasi</button></div></form></dialog>`;
+  return `<dialog id="create-dialog" aria-labelledby="create-title"><form id="admin-create-form"><div class="dialog-head"><div><h2 id="create-title">Siapkan kartu baru</h2><p>Identitas unik otomatis, langsung siap diklaim.</p></div><button class="icon-btn" type="button" data-close="create-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div id="create-error" class="inline-error" role="alert" hidden></div><div class="form-group"><label for="create-quantity">Jumlah kartu</label><input class="field" id="create-quantity" type="number" min="1" max="1000" step="1" value="1" required><div class="quantity-presets"><button class="btn" type="button" data-quantity="1">1 kartu</button><button class="btn" type="button" data-quantity="10">10 kartu</button><button class="btn" type="button" data-quantity="50">50 kartu</button><button class="btn" type="button" data-quantity="100">100 kartu</button></div><p class="help">Maksimal 1.000 kartu dalam satu pembuatan.</p></div><div class="production-mark">${icon('nfc')}<div><strong>QR dan NFC menggunakan URL yang sama</strong><small>Ekspor CSV sesudah kartu dibuat untuk menyiapkan produksi.</small></div></div></div><div class="dialog-foot"><button class="btn" type="button" data-close="create-dialog">Batal</button><button class="btn primary" id="create-submit" type="submit">${icon('plus')} Buat kartu</button></div></form></dialog><dialog id="batch-dialog" aria-labelledby="batch-title"><div class="dialog-head"><div><h2 id="batch-title">Kartu Baru Berhasil Disimpan</h2><p id="batch-subtitle"></p></div><button class="icon-btn" type="button" data-close="batch-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div class="info-box" style="background:#e8f0fe;border-color:#1a73e8;color:#174ea6;padding:12px;border-radius:8px"><strong>Satu kartu, satu kode aktivasi, satu URL permanen.</strong><br>Setiap kartu dilengkapi kode aktivasi 6 digit untuk verifikasi pembeli di Tahap 1 aktivasi.</div><div id="batch-card-list" style="margin-top:14px;max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;"></div><div style="display:flex;flex-direction:column;gap:10px;margin-top:16px"><button class="btn primary" id="download-batch-qr-zip">${icon('download')} Unduh ZIP QR Code (${icon('card')} PNG per kartu)</button><button class="btn" id="download-physical-batch-csv">${icon('download')} Unduh CSV Produksi Percetakan & Kode Aktivasi</button></div><p class="help" style="margin-top:12px">CSV Produksi memuat kode kartu, kode aktivasi 6 digit, dan URL permanen.</p></div><div class="dialog-foot"><button class="btn" type="button" data-close="batch-dialog">Selesai</button></div></dialog><dialog id="reissue-dialog" aria-labelledby="reissue-title"><div class="dialog-head"><div><h2 id="reissue-title">Terbitkan Ulang Link Aktivasi</h2><p id="reissue-card-label" class="mono"></p></div><button class="icon-btn" type="button" data-close="reissue-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div class="warning-box"><strong>Link aktivasi lama akan dibatalkan secara permanen.</strong><br>Token baru akan diterbitkan. Siapa pun yang memegang link lama tidak akan dapat menggunakannya lagi.</div><label class="check-label" style="margin-top:16px"><input id="reissue-ack" type="checkbox" required><span>Saya mengonfirmasi bahwa link lama hilang/batal dan perlu diganti dengan link baru.</span></label></div><div class="dialog-foot"><button class="btn" type="button" data-close="reissue-dialog">Batal</button><button class="btn danger" id="reissue-submit" type="button" disabled>Konfirmasi Terbitkan Ulang</button></div></dialog><dialog id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><h2 id="detail-title">Detail kartu</h2><p>Identitas, kepemilikan, dan URL permanen.</p></div><button class="icon-btn" data-close="detail-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body" id="detail-body"></div><div class="dialog-foot"><button class="btn" data-close="detail-dialog">Tutup</button></div></dialog><dialog id="reset-dialog" aria-labelledby="reset-title"><form id="admin-reset-form"><div class="dialog-head"><div><h2 id="reset-title">Reset Aktivasi</h2><p id="reset-card-label" class="mono"></p></div><button class="icon-btn" type="button" data-close="reset-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div class="warning-box"><strong>Pemilik lama akan kehilangan akses.</strong>Nama usaha, tujuan review, dan kepemilikan dilepas agar kartu dapat diklaim ulang. ID dan URL QR/NFC tetap sama. Tindakan ini dicatat pada audit.</div><div id="reset-error" class="inline-error" role="alert" hidden></div><div class="form-group"><label for="reset-confirmation">Ketik ulang ID kartu</label><input class="field mono" id="reset-confirmation" required autocomplete="off" spellcheck="false"></div><div class="form-group"><label for="reset-reason">Alasan reset</label><textarea class="field" id="reset-reason" required minlength="20" maxlength="1000" placeholder="Jelaskan permintaan dan alasan reset…"></textarea><p class="help">Minimal 20 karakter. Alasan disimpan dalam log aktivitas.</p></div><label class="check-label"><input id="reset-ack" type="checkbox" required><span>Saya memahami bahwa pemilik lama kehilangan akses dan kartu dapat diklaim ulang.</span></label></div><div class="dialog-foot"><button class="btn" type="button" data-close="reset-dialog">Batal</button><button class="btn danger" id="reset-submit" type="submit" disabled>Konfirmasi Reset Aktivasi</button></div></form></dialog><dialog id="archive-dialog" aria-labelledby="archive-title"><form id="admin-archive-form"><div class="dialog-head"><div><h2 id="archive-title">Arsipkan Kartu</h2><p id="archive-card-label" class="mono"></p></div><button class="icon-btn" type="button" data-close="archive-dialog" aria-label="Tutup">${icon('close')}</button></div><div class="dialog-body"><div class="warning-box"><strong>Kartu akan disembunyikan dari daftar utama Admin.</strong><br>Data tidak dihapus dan dapat dipulihkan kapan saja melalui menu Arsip. QR/NFC kartu tetap berfungsi normal dan pembeli tetap dapat mengklaim.</div><p style="margin-top:12px;font-size:13px;color:#4b5563;">Apakah Anda yakin ingin mengarsipkan kartu <strong id="archive-card-confirm" class="mono"></strong>?</p></div><div class="dialog-foot"><button class="btn" type="button" data-close="archive-dialog">Batal</button><button class="btn danger" id="archive-submit" type="submit">${icon('archive')} Konfirmasi Arsipkan</button></div></form></dialog>`;
 }
 
 function showDetail(code) {
@@ -221,6 +281,56 @@ async function resetCard(event) {
   finally{if(byId('reset-dialog')){lockDialog('reset-dialog',false);byId('reset-submit').textContent='Konfirmasi Reset Aktivasi';}}
 }
 
+function openArchiveConfirm(code) {
+  const card=state.cards.find(c=>c.card_code===code);
+  if(!card||state.busy)return;
+  state.archiveTarget=code;
+  byId('archive-card-label').textContent=`${card.card_code} · ${card.business_name||'Kartu siap diklaim'}`;
+  byId('archive-card-confirm').textContent=card.card_code;
+  byId('archive-dialog').showModal();
+}
+
+async function confirmArchiveCard(event) {
+  if(event)event.preventDefault();
+  const code=state.archiveTarget;
+  if(!code||state.busy)return;
+  lockDialog('archive-dialog',true);
+  byId('archive-submit').textContent='Mengarsipkan…';
+  try{
+    const data=await request('archive',{card_code:code});
+    if(data.success!==true)throw Error('Gagal mengarsipkan kartu.');
+    const card=state.cards.find(c=>c.card_code===code);
+    if(card)card.is_archived=true;
+    byId('archive-dialog').close();
+    renderInventory();
+    renderArchive();
+    notify(`Kartu ${code} berhasil diarsipkan.`);
+  }catch(error){
+    notify(`Gagal mengarsipkan kartu: ${error.message||error}`,true);
+  }finally{
+    if(byId('archive-dialog')){
+      lockDialog('archive-dialog',false);
+      byId('archive-submit').innerHTML=`${icon('archive')} Konfirmasi Arsipkan`;
+    }
+  }
+}
+
+async function restoreCard(code) {
+  if(!code||state.busy)return;
+  try{
+    notify(`Memulihkan kartu ${code}…`);
+    const data=await request('restore',{card_code:code});
+    if(data.success!==true)throw Error('Gagal memulihkan kartu.');
+    const card=state.cards.find(c=>c.card_code===code);
+    if(card)card.is_archived=false;
+    renderInventory();
+    renderArchive();
+    notify(`Kartu ${code} berhasil dipulihkan ke daftar utama.`);
+  }catch(error){
+    notify(`Gagal memulihkan kartu: ${error.message||error}`,true);
+  }
+}
+
 function csvValue(value) {
   let text=String(value??'');if(/^[=+\-@\t\r]/.test(text))text="'"+text;
   return '"'+text.replace(/"/g,'""')+'"';
@@ -259,10 +369,10 @@ async function downloadQrZip(cards) {
   try{
     const files=[];
     for(const card of cards){
-      const url=permanentUrl(card);if(!url)continue;
+      const url=getProductionPermanentUrl(card.card_code);if(!url)continue;
       const blob=await generateQrPngBlob(url,{size:512,margin:4});
       const buffer=new Uint8Array(await blob.arrayBuffer());
-      files.push({name:`${card.card_code}.png`,data:buffer});
+      files.push({name:`RAKYAT-REVIEW-${card.card_code}.png`,data:buffer});
     }
     if(!files.length)throw Error('Tidak ada URL permanen valid.');
     const zipBytes=buildZip(files);
@@ -318,24 +428,54 @@ async function confirmReissue() {
 }
 
 function openBatchResult(cards) {
-  if(byId('batch-subtitle'))byId('batch-subtitle').textContent=`${number(cards.length)} kartu baru siap diproduksi dan diklaim pembeli.`;
-  if(byId('batch-dialog'))byId('batch-dialog').showModal();
+  state.lastGeneratedBatch = cards;
+  if(byId('batch-subtitle')) {
+    byId('batch-subtitle').textContent = `${number(cards.length)} kartu baru berhasil disiapkan. URL permanen QR/NFC siap digunakan.`;
+  }
+  const listEl = byId('batch-card-list');
+  if (listEl) {
+    listEl.innerHTML = cards.map(c => {
+      const prodUrl = getProductionPermanentUrl(c.card_code);
+      return `
+      <div class="batch-card-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #edf0f6;background:#fff;flex-wrap:wrap;">
+        <div style="min-width:0;flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="mono" style="font-size:14px;font-weight:700;color:#1d2a40;letter-spacing:0.5px;">${escapeHtml(c.card_code)}</span>
+            <span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#e6f4ea;color:#137333;">Siap Aktivasi</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;word-break:break-all;">
+            <span style="color:#94a3b8;">URL Permanen:</span> <a href="${escapeHtml(prodUrl)}" target="_blank" rel="noopener noreferrer" style="color:#245fc4;text-decoration:none;">${escapeHtml(prodUrl)}</a>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;flex-wrap:wrap;">
+          <button type="button" class="btn" data-batch-copy="${escapeHtml(c.card_code)}" aria-label="Salin Link ${escapeHtml(c.card_code)}">
+            ${icon('copy')} Salin Link
+          </button>
+          <button type="button" class="btn primary" data-batch-qr="${escapeHtml(c.card_code)}" aria-label="Download QR PNG ${escapeHtml(c.card_code)}">
+            ${icon('download')} Download QR PNG
+          </button>
+        </div>
+      </div>
+      `;
+    }).join('');
+  }
+  if(byId('batch-dialog')) byId('batch-dialog').showModal();
 }
 
 function exportPrivateActivationCsv(cards) {
   if(!cards||!cards.length){notify('Belum ada kartu untuk diekspor.',true);return;}
-  const rows=[['card_code','permanent_url','secret_activation_link','secret_activation_token','created_at'],...cards.map(c=>[c.card_code,c.card_url||permanentUrl(c),c.activation_url||state.knownActivationLinks?.get(c.card_code)||'',c.activation_token||'',new Date().toISOString()])];
+  const rows=[['card_code','permanent_url','created_at'],...cards.map(c=>[c.card_code,getProductionPermanentUrl(c.card_code),new Date().toISOString()])];
   const blob=new Blob(['\uFEFF'+rows.map(row=>row.map(csvValue).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download='rakyat-review-ARSIP-PRIVAT-AKTIVASI-'+new Date().toISOString().slice(0,10)+'.csv';document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  notify('CSV Link Aktivasi Privat berhasil diunduh. Simpan untuk diberikan ke pembeli.');
+  const url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download='rakyat-review-ARSIP-AKTIVASI-'+new Date().toISOString().slice(0,10)+'.csv';document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  notify('CSV Data Aktivasi berhasil diunduh.');
 }
 
 function exportPhysicalProductionCsv(cards) {
   if(!cards||!cards.length){notify('Belum ada kartu untuk diekspor.',true);return;}
-  const rows=[['card_code','permanent_url','qr_url','nfc_url'],...cards.map(c=>{const url=c.card_url||permanentUrl(c);return [c.card_code,url,url,url];})];
+  const rows=[['card_code','permanent_url','qr_url','nfc_url'],...cards.map(c=>{const url=getProductionPermanentUrl(c.card_code);return [c.card_code,url,url,url];})];
   const blob=new Blob(['\uFEFF'+rows.map(row=>row.map(csvValue).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download='rakyat-review-PRODUKSI-PERCETAKAN-'+new Date().toISOString().slice(0,10)+'.csv';document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  notify('CSV Produksi Percetakan berhasil diunduh (bebas token/link rahasia).');
+  notify('CSV Produksi Percetakan (Kode Kartu & URL Permanen) berhasil diunduh.');
 }
 
 async function loadAudit() {
@@ -354,11 +494,60 @@ async function handleClick(event) {
   const id=button.id;
   if(button.dataset.close){if(!state.busy)byId(button.dataset.close).close();return;}
   if(button.dataset.quantity){byId('create-quantity').value=button.dataset.quantity;return;}
+  if(button.dataset.batchCopy){
+    const code=button.dataset.batchCopy;
+    const url=getProductionPermanentUrl(code);
+    try{
+      await navigator.clipboard.writeText(url);
+      notify(`Link permanen ${url} berhasil disalin.`);
+    }catch{
+      notify('Browser tidak mengizinkan akses clipboard.',true);
+    }
+    return;
+  }
+  if(button.dataset.batchQr){
+    const code=button.dataset.batchQr;
+    const url=getProductionPermanentUrl(code);
+    try{
+      notify(`Menyiapkan QR Code ${code}…`);
+      const blob=await generateQrPngBlob(url,{size:512,margin:4});
+      const blobUrl=URL.createObjectURL(blob),anchor=document.createElement('a');
+      anchor.href=blobUrl;anchor.download=`RAKYAT-REVIEW-${code}.png`;
+      document.body.append(anchor);anchor.click();anchor.remove();
+      setTimeout(()=>URL.revokeObjectURL(blobUrl),1000);
+      notify(`QR Code RAKYAT-REVIEW-${code}.png berhasil diunduh.`);
+    }catch(e){
+      notify('Gagal membuat QR Code: '+(e.message||e),true);
+    }
+    return;
+  }
   if(button.dataset.detail){showDetail(button.dataset.detail);return;}
-  if(button.dataset.view){state.view=button.dataset.view;for(const item of app.querySelectorAll('[data-view]'))item.classList.toggle('active',item.dataset.view===state.view);byId('inventory-section').hidden=state.view!=='cards';byId('audit-section').hidden=state.view!=='audit';byId('breadcrumb').textContent=state.view==='cards'?'Ringkasan & kartu':'Riwayat aktivitas';toggleMenu(false);if(state.view==='audit')await loadAudit();return;}
+  if(button.dataset.menuToggle){
+    event.stopPropagation();
+    const code=button.dataset.menuToggle;
+    const targetDropdown=byId(`dropdown-${code}`);
+    const isShowing=targetDropdown&&!targetDropdown.hidden;
+    for(const d of app.querySelectorAll('.action-dropdown'))d.hidden=true;
+    for(const b of app.querySelectorAll('.action-menu-btn'))b.setAttribute('aria-expanded','false');
+    if(targetDropdown&&!isShowing){
+      targetDropdown.hidden=false;
+      button.setAttribute('aria-expanded','true');
+    }
+    return;
+  }
+  if(button.dataset.archiveOpen){
+    for(const d of app.querySelectorAll('.action-dropdown'))d.hidden=true;
+    openArchiveConfirm(button.dataset.archiveOpen);
+    return;
+  }
+  if(button.dataset.restoreCard){
+    await restoreCard(button.dataset.restoreCard);
+    return;
+  }
+  if(button.dataset.view){state.view=button.dataset.view;for(const item of app.querySelectorAll('[data-view]'))item.classList.toggle('active',item.dataset.view===state.view);byId('inventory-section').hidden=state.view!=='cards';byId('archive-section').hidden=state.view!=='archive';byId('audit-section').hidden=state.view!=='audit';byId('breadcrumb').textContent=state.view==='cards'?'Ringkasan & kartu':state.view==='archive'?'Arsip kartu':'Riwayat aktivitas';toggleMenu(false);if(state.view==='archive')renderArchive();if(state.view==='audit')await loadAudit();return;}
   if(id==='menu-open'){toggleMenu(!byId('admin-sidebar').classList.contains('open'));return;}
   if(id==='menu-close'||id==='menu-backdrop'){toggleMenu(false);return;}
-  if(id==='reload-cards'||id==='retry-cards'){await loadCards();return;}
+  if(id==='reload-cards'||id==='retry-cards'||id==='reload-archive'){await loadCards();return;}
   if(id==='reload-audit'){await loadAudit();return;}
   if(id==='open-create'||id==='empty-create'){if(!state.capabilities.create)return;byId('create-error').hidden=true;byId('admin-create-form').reset();if(state.capabilities.idempotent_create){try{const pending=JSON.parse(sessionStorage.getItem('rr-admin-generate-pending-v1')||'null');if(pending)byId('create-quantity').value=pending.quantity;}catch{}}byId('create-dialog').showModal();return;}
   if(id==='export-cards'){exportCards(filteredCards());return;}
@@ -377,6 +566,12 @@ async function handleClick(event) {
   if(id==='admin-logout'){button.disabled=true;try{await request('logout',{});state.cards=[];state.statistics=null;app.removeEventListener('click',handleClick);renderLogin();}catch(error){button.disabled=false;notify(error.message,true);}}
 }
 
+document.addEventListener('click',event=>{
+  if(!event.target.closest('.menu-dropdown-wrap')){
+    for(const d of document.querySelectorAll('.action-dropdown'))d.hidden=true;
+    for(const b of document.querySelectorAll('.action-menu-btn'))b.setAttribute('aria-expanded','false');
+  }
+});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&byId('admin-sidebar'))toggleMenu(false);});
 try{const session=await request('session');acceptMetadata(session);if(session.authenticated===false)renderLogin();else{renderShell();await loadCards();}}
 catch(error){if(error.data)acceptMetadata(error.data);renderLogin(error.status===401?'':error.message);}

@@ -1,6 +1,46 @@
-
 {
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/pembeli/(.*\\.(?:css|js|png|svg|ico|woff2))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/pembeli/auth-callback",
+      "destination": "/pembeli/auth-callback.html"
+    },
+    {
+      "source": "/pembeli/auth-callback/",
+      "destination": "/pembeli/auth-callback.html"
+    },
+    {
+      "source": "/auth-callback.html",
+      "destination": "/pembeli/auth-callback.html"
+    },
+    {
+      "source": "/auth-callback",
+      "destination": "/pembeli/auth-callback.html"
+    },
+    {
+      "source": "/auth-callback/",
+      "destination": "/pembeli/auth-callback.html"
+    },
     {
       "source": "/r/iKRb7_7PyK6kg4Ye7EqvOhYu",
       "destination": "/api/pilot-redirect?code=iKRb7_7PyK6kg4Ye7EqvOhYu"
@@ -11,11 +51,11 @@
     },
     {
       "source": "/r/:code",
-      "destination": "/r/001/index.html"
+      "destination": "/api/card-redirect?code=:code"
     },
     {
       "source": "/r/:code/",
-      "destination": "/r/001/index.html"
+      "destination": "/api/card-redirect?code=:code"
     }
   ]
 }

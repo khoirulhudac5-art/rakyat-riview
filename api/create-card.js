@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       success: true,
       card_code,
       activation_code: activationCode,
-      card_url: `https://rakyat-riview.vercel.app/r/${card_code}`
+      card_url: `/r/${card_code}`
     });
 
   } catch (error) {

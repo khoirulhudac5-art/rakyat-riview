@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Verifikasi Akun · Rakyat Review</title>
+  <link rel="stylesheet" href="/assets/buyer.css">
+  <link rel="stylesheet" href="/pembeli/account.css">
+  <link rel="stylesheet" href="/pembeli/experience.css">
+  <link rel="icon" type="image/png" href="/assets/rakyat-review-logo.png">
+  <script type="module" src="/pembeli/auth-callback.mjs"></script>
+</head>
+<body>
+  <header class="account-header">
+    <a class="account-brand" href="dashboard.html">
+      <img class="rr-logo" src="/assets/rakyat-review-logo.png" alt="Logo Rakyat Review" width="63" height="42">
+      <span>rakyat<span>review</span></span>
+    </a>
+  </header>
+
+  <main class="account-main" style="max-width:520px;margin:32px auto;padding:0 20px;">
+    <!-- Loading State -->
+    <div id="callback-loading" class="auth-box" style="text-align:center;padding:36px 24px;border-radius:14px;background:#ffffff;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+      <div class="callback-spinner" style="width:48px;height:48px;border:3.5px solid #e2e8f0;border-top-color:#1a73e8;border-radius:50%;margin:0 auto 20px;animation:rr-spin 0.8s linear infinite;"></div>
+      <h2 id="callback-loading-title" style="font-size:18px;margin-bottom:8px;color:#1e293b;font-weight:700;">Memverifikasi Akun Anda...</h2>
+      <p id="callback-loading-desc" style="font-size:14px;color:#64748b;margin:0;line-height:1.5;">Mohon tunggu sebentar, sedang memproses data verifikasi dan menghubungkan kartu Anda.</p>
+    </div>
+
+    <!-- Success State -->
+    <div id="callback-success" class="auth-box" hidden style="text-align:center;padding:36px 24px;border-radius:14px;background:#ffffff;border:1px solid #bbf7d0;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+      <div style="width:64px;height:64px;background:#e6f4ea;border-radius:50%;display:grid;place-items:center;margin:0 auto 18px;color:#16a34a;">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2 id="callback-success-title" style="font-size:20px;margin-bottom:8px;color:#1e293b;font-weight:700;">Verifikasi Berhasil!</h2>
+      <p id="callback-success-desc" style="font-size:14px;color:#64748b;margin-bottom:22px;line-height:1.5;">Akun Anda telah aktif. Mengalihkan ke dashboard...</p>
+      <a id="callback-success-btn" class="btn primary full" href="dashboard.html" style="text-decoration:none;">Buka Dashboard Saya ➔</a>
+    </div>
+
+    <!-- Error / Expired Link State -->
+    <div id="callback-error" class="auth-box" hidden style="padding:32px 24px;text-align:center;border-radius:14px;background:#ffffff;border:1px solid #fed7aa;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+      <div style="width:64px;height:64px;background:#fef3c7;border-radius:50%;display:grid;place-items:center;margin:0 auto 18px;color:#d97706;">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h2 id="callback-error-title" style="font-size:19px;margin-bottom:8px;color:#1e293b;font-weight:700;">Tautan Verifikasi Sudah Digunakan</h2>
+      <p id="callback-error-desc" style="font-size:14px;color:#64748b;margin-bottom:22px;line-height:1.5;">Tautan ini mungkin sudah diklik sebelumnya atau kedaluwarsa. Jika Anda sudah pernah memverifikasi email, silakan langsung masuk menggunakan password Anda.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <a id="callback-action-resume" class="btn primary full" href="mulai.html" style="text-decoration:none;">Lanjutkan Aktivasi Kartu ➔</a>
+        <a id="callback-action-login" class="btn full" href="index.html" style="text-decoration:none;">Masuk ke Akun Pembeli</a>
+      </div>
+    </div>
+  </main>
+  <style>
+    @keyframes rr-spin { to { transform: rotate(360deg); } }
+  </style>
+</body>
+</html>

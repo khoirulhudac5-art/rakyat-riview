@@ -2,8 +2,16 @@
   'use strict';
   const page = document.body.dataset.page;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  // Confirmation email may return an implicit-flow fragment. Never retain/log its tokens.
-  if (location.hash.includes('access_token=') || location.hash.includes('error=')) history.replaceState(null, '', location.pathname + location.search);
+  let recoveryToken = null;
+  if (location.hash.includes('type=recovery') || location.hash.includes('access_token=')) {
+    try {
+      const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+      if (hashParams.get('type') === 'recovery' || hashParams.get('access_token')) {
+        recoveryToken = hashParams.get('access_token');
+      }
+    } catch {}
+    history.replaceState(null, '', location.pathname + location.search);
+  }
   let signup = false, cards = [], selectedCode = null, mock = false, statistics = null, productPreview = false, firstClaimFlow = false, realAuth = false, cardAccess = 'closed';
   const count = value => (typeof value==='number'||(typeof value==='string'&&/^\d+$/.test(value)))&&Number.isSafeInteger(Number(value))&&Number(value)>=0 ? Number(value).toLocaleString('id-ID') : '—';
   const svg = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${({card:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/>',scan:'<path d="M8 3H4a1 1 0 0 0-1 1v4m13-5h4a1 1 0 0 1 1 1v4M3 16v4a1 1 0 0 0 1 1h4m8 0h4a1 1 0 0 0 1-1v-4M7 12h10M9 9v6m6-6v6"/>',arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>',plus:'<path d="M12 5v14M5 12h14"/>',chart:'<path d="M4 4v16h16M8 15l4-5 4 2 4-6"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',external:'<path d="M14 3h7v7m0-7L10 14M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/>',edit:'<path d="m15 5 4 4M4 20l5-1L20 8a3 3 0 0 0-4-4L5 15z"/>'})[name] || ''}</svg>`;
@@ -51,36 +59,365 @@
       finally { button.disabled = false; button.textContent = label; }
     });
   }
+  let authMode = recoveryToken ? 'reset' : (location.hash === '#signup' ? 'signup' : (location.hash === '#forgot' ? 'forgot' : 'signin'));
+
   function auth() {
-    content.innerHTML = `<div class="auth-layout"><section class="auth-intro"><p class="eyebrow">RUANG PEMBELI RAKYAT REVIEW</p><h1>Setiap kartu.<br>Satu akun Anda.</h1><p>Aktifkan kartu, kelola identitas usaha, dan perbarui tujuan Google Review dalam satu tempat.</p><p class="account-privacy">Kartu NFC/QR Anda tetap dapat dibuka pengunjung tanpa login.</p></section><section class="auth-box"><details class="email-access"><summary>Akun email yang sudah ada</summary><div class="auth-tabs"><button class="btn ${!signup?'selected':''}" id="signin-tab">Masuk</button><button class="btn ${signup?'selected':''}" id="signup-tab">Daftar akun</button></div><h2>${signup?'Mulai dengan akun Anda':'Selamat datang kembali'}</h2><p class="status-note">${signup?'Verifikasi alamat email untuk menyelesaikan pendaftaran.':'Masuk menggunakan email dan password akun pembeli.'}</p><form id="auth-form">${field('email','Email',{type:'email',required:true,max:254,autocomplete:'email'})}${field('password','Password',{type:'password',min:signup?8:undefined,max:256,autocomplete:signup?'new-password':'current-password',hint:signup?'Minimal 8 karakter. Gunakan password yang unik.':''})}<button class="btn primary full" type="submit">${signup?'Buat akun':'Masuk ke dashboard'}</button><p class="message" role="status"></p></form></details>${mock ? '<div class="demo-access"><button class="btn full" id="demo-signin" type="button">Masuk sebagai akun demo</button><p class="hint">Preview lokal tanpa Supabase. Akun dan kartu contoh dibuat otomatis.</p><p class="message" id="demo-message" role="status"></p></div>' : ''}<p class="account-privacy">Akun pembeli terpisah dari akun admin. Jangan masukkan PIN kartu sebagai password akun.</p><div class="color-stripe"></div></section></div>`;
-    document.getElementById('signin-tab').onclick = () => {signup=false;auth();};
-    const googleButton=document.createElement('button');googleButton.type='button';googleButton.id='google-signin';googleButton.className='btn primary full';googleButton.textContent='Lanjutkan dengan Google';
-    const googleNote=document.createElement('p');googleNote.role='status';googleNote.className='message';
-    const emailSection=document.querySelector('.email-access');if(emailSection&&typeof emailSection.before==='function')emailSection.before(googleButton,googleNote);
-    googleButton.onclick=async()=>{googleButton.disabled=true;try{const {googleLogin}=await import('./drafts.mjs');const next=new URLSearchParams(location.search).get('next');await googleLogin(next==='aktivasi.html'?'/pembeli/aktivasi.html':'/pembeli/dashboard.html');}catch(error){message(googleNote,error.message,true);googleButton.disabled=false;}};
-    if(mock && productPreview){googleButton.disabled=true;googleNote.textContent='Login Google nyata tetap tersedia pada aplikasi terintegrasi. Gunakan akun simulasi A atau B untuk mencoba produk lokal ini.';googleNote.className='status-note';if(emailSection)emailSection.hidden=true;}
-    if(realAuth){if(emailSection)emailSection.hidden=true;googleNote.textContent='Masuk dengan Google asli melalui Supabase. Akses kartu V2 masih closed.';googleNote.className='status-note';}
-    document.getElementById('signup-tab').onclick = () => {signup=true;auth();};
-    if (mock) document.getElementById('demo-signin').onclick = async () => {
-      const button=document.getElementById('demo-signin'),note=document.getElementById('demo-message');
-      button.disabled=true;
-      try {
-        await request('demo-signin',{account:'first'});
-        const target=new URLSearchParams(location.search).get('next');
-        location.href=['aktivasi.html','dashboard.html'].includes(target)?target:'dashboard.html';
-      } catch(error) { message(note,error.message,true); }
-      finally { button.disabled=false; }
-    };
-    if (mock && productPreview) {
-      const secondButton=document.createElement('button');secondButton.type='button';secondButton.className='btn full';secondButton.id='demo-signin-second';secondButton.textContent='Masuk sebagai akun demo B';
-      const demoButton=document.getElementById('demo-signin');demoButton.textContent='Masuk sebagai akun demo A';
-      demoButton.after(secondButton);
-      secondButton.onclick=async()=>{secondButton.disabled=true;try{await request('demo-signin',{account:'second'});location.href='dashboard.html';}catch(error){message(document.getElementById('demo-message'),error.message,true);}finally{secondButton.disabled=false;}};
-    }
-    bindForm('auth-form',signup?'signup':'signin',async (data, form, note) => {
-      form.elements.password.value = '';
-      if (data.signed_in) location.href = 'dashboard.html'; else message(note,data.message);
+    const isSignin = authMode === 'signin';
+    const isSignup = authMode === 'signup';
+    const isForgot = authMode === 'forgot';
+    const isReset = authMode === 'reset';
+
+    const title = isSignup ? 'Daftar Akun Baru'
+      : (isForgot ? 'Atur Ulang Password'
+      : (isReset ? 'Buat Password Baru'
+      : 'Masuk ke Akun Anda'));
+
+    const subtitle = isSignup ? 'Kelola seluruh kartu review Anda dalam satu akun'
+      : (isForgot ? 'Masukkan email akun Anda untuk menerima tautan reset password'
+      : (isReset ? 'Masukkan password baru untuk akun Anda'
+      : 'Kelola kartu review dan pantau performa usaha Anda'));
+
+    content.innerHTML = `
+      <div class="lynk-auth-container">
+        <div class="lynk-auth-header">
+          <a class="lynk-brand" href="dashboard.html" aria-label="Rakyat Review">
+            <img class="rr-logo" src="../assets/rakyat-review-logo.png" alt="Rakyat Review" width="72" height="48">
+          </a>
+          <h1 class="lynk-title">${title}</h1>
+          <p class="lynk-subtitle">${subtitle}</p>
+        </div>
+
+        <div class="lynk-auth-card">
+          ${isSignin ? `
+            <form id="form-auth-signin" autocomplete="on">
+              <div class="field">
+                <label for="signin-email">Alamat Email</label>
+                <input id="signin-email" name="email" type="email" placeholder="Masukkan alamat email Anda" autocomplete="email" required>
+              </div>
+
+              <div class="field">
+                <div class="field-label-row">
+                  <label for="signin-password">Password</label>
+                  <button type="button" class="auth-text-link" id="btn-to-forgot">Lupa Password?</button>
+                </div>
+                <div class="password-wrap">
+                  <input id="signin-password" name="password" type="password" placeholder="Masukkan password Anda" autocomplete="current-password" required>
+                  <button type="button" class="btn-toggle-pw" aria-label="Lihat password" tabindex="-1">
+                    <svg class="icon eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <button class="btn primary full btn-auth-submit" type="submit" id="btn-submit-signin">Masuk</button>
+              <div id="signin-msg" class="message" role="status" style="display:none;margin-top:12px;"></div>
+
+              <div class="auth-divider"><span>atau</span></div>
+
+              <button class="btn google-btn full" type="button" id="google-signin">
+                <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="margin-right:8px;vertical-align:middle;flex-shrink:0;">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17Z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z"/>
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.94 0 12s.45 3.84 1.25 5.42l4.03-3.15Z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"/>
+                </svg>
+                <span>Lanjutkan dengan Google</span>
+              </button>
+            </form>
+
+            <p class="auth-toggle-note">
+              Belum punya akun? <button type="button" class="auth-text-link bold" id="btn-to-signup">Daftar</button>
+            </p>
+          ` : ''}
+
+          ${isSignup ? `
+            <form id="form-auth-signup" autocomplete="on">
+              <div class="field">
+                <label for="reg-email">Alamat Email</label>
+                <input id="reg-email" name="email" type="email" placeholder="Masukkan alamat email Anda" autocomplete="email" required>
+              </div>
+
+              <div class="field">
+                <label for="reg-password">Password</label>
+                <div class="password-wrap">
+                  <input id="reg-password" name="password" type="password" minlength="8" maxlength="256" placeholder="Masukkan password Anda" autocomplete="new-password" required>
+                  <button type="button" class="btn-toggle-pw" aria-label="Lihat password" tabindex="-1">
+                    <svg class="icon eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <p class="hint">Minimal 8 karakter. Gunakan password yang kuat dan unik.</p>
+              </div>
+
+              <div class="field">
+                <label for="reg-confirm">Konfirmasi Password</label>
+                <div class="password-wrap">
+                  <input id="reg-confirm" name="confirm" type="password" minlength="8" maxlength="256" placeholder="Masukkan password Anda" autocomplete="new-password" required>
+                  <button type="button" class="btn-toggle-pw" aria-label="Lihat konfirmasi password" tabindex="-1">
+                    <svg class="icon eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <button class="btn primary full btn-auth-submit" type="submit" id="btn-submit-signup">Daftar Akun</button>
+              <div id="signup-msg" class="message" role="status" style="display:none;margin-top:12px;"></div>
+
+              <div class="auth-divider"><span>atau</span></div>
+
+              <button class="btn google-btn full" type="button" id="google-signup">
+                <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="margin-right:8px;vertical-align:middle;flex-shrink:0;">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17Z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z"/>
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.94 0 12s.45 3.84 1.25 5.42l4.03-3.15Z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"/>
+                </svg>
+                <span>Lanjutkan dengan Google</span>
+              </button>
+            </form>
+
+            <p class="auth-toggle-note">
+              Sudah punya akun? <button type="button" class="auth-text-link bold" id="btn-to-signin">Masuk</button>
+            </p>
+          ` : ''}
+
+          ${isForgot ? `
+            <form id="form-auth-forgot">
+              <div class="field">
+                <label for="forgot-email">Alamat Email</label>
+                <input id="forgot-email" name="email" type="email" placeholder="Masukkan alamat email Anda" autocomplete="email" required>
+              </div>
+
+              <button class="btn primary full btn-auth-submit" type="submit" id="btn-submit-forgot">Kirim Link Reset Password</button>
+              <div id="forgot-msg" class="message" role="status" style="display:none;margin-top:12px;"></div>
+            </form>
+
+            <p class="auth-toggle-note">
+              Ingat password Anda? <button type="button" class="auth-text-link bold" id="btn-forgot-back">Kembali ke Halaman Masuk</button>
+            </p>
+          ` : ''}
+
+          ${isReset ? `
+            <form id="form-auth-reset">
+              <div class="field">
+                <label for="reset-password">Password Baru</label>
+                <div class="password-wrap">
+                  <input id="reset-password" name="password" type="password" minlength="8" maxlength="256" placeholder="Masukkan password Anda" required>
+                  <button type="button" class="btn-toggle-pw" aria-label="Lihat password" tabindex="-1">
+                    <svg class="icon eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <p class="hint">Minimal 8 karakter.</p>
+              </div>
+
+              <div class="field">
+                <label for="reset-confirm">Konfirmasi Password Baru</label>
+                <div class="password-wrap">
+                  <input id="reset-confirm" name="confirm" type="password" minlength="8" maxlength="256" placeholder="Masukkan password Anda" required>
+                  <button type="button" class="btn-toggle-pw" aria-label="Lihat konfirmasi password" tabindex="-1">
+                    <svg class="icon eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <button class="btn primary full btn-auth-submit" type="submit" id="btn-submit-reset">Simpan Password Baru</button>
+              <div id="reset-msg" class="message" role="status" style="display:none;margin-top:12px;"></div>
+            </form>
+
+            <p class="auth-toggle-note">
+              <button type="button" class="auth-text-link bold" id="btn-reset-back">Ke Halaman Masuk</button>
+            </p>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    // Toggle password visibility handler
+    content.querySelectorAll('.btn-toggle-pw').forEach(btn => {
+      btn.onclick = () => {
+        const input = btn.parentElement.querySelector('input');
+        if (!input) return;
+        const isPw = input.type === 'password';
+        input.type = isPw ? 'text' : 'password';
+        btn.innerHTML = isPw
+          ? `<svg class="icon eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`
+          : `<svg class="icon eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+        btn.style.color = isPw ? '#306cce' : '#64748b';
+      };
     });
+
+    // Navigation toggles
+    const toSignup = document.getElementById('btn-to-signup');
+    if (toSignup) toSignup.onclick = () => { authMode = 'signup'; auth(); };
+    const toSignin = document.getElementById('btn-to-signin');
+    if (toSignin) toSignin.onclick = () => { authMode = 'signin'; auth(); };
+    const toForgot = document.getElementById('btn-to-forgot');
+    if (toForgot) toForgot.onclick = () => { authMode = 'forgot'; auth(); };
+    const forgotBack = document.getElementById('btn-forgot-back');
+    if (forgotBack) forgotBack.onclick = () => { authMode = 'signin'; auth(); };
+    const resetBack = document.getElementById('btn-reset-back');
+    if (resetBack) resetBack.onclick = () => { authMode = 'signin'; auth(); };
+
+    // Google Login wire-up
+    const setupGoogle = btnId => {
+      const gBtn = document.getElementById(btnId);
+      if (!gBtn) return;
+      gBtn.onclick = async () => {
+        gBtn.disabled = true;
+        try {
+          const { googleLogin } = await import('./drafts.mjs');
+          const next = new URLSearchParams(location.search).get('next');
+          await googleLogin(next === 'aktivasi.html' ? '/pembeli/aktivasi.html' : '/dashboard.html');
+        } catch (err) {
+          alert('Gagal memulai login Google: ' + err.message);
+          gBtn.disabled = false;
+        }
+      };
+    };
+    setupGoogle('google-signin');
+    setupGoogle('google-signup');
+
+    // Sign In form submit
+    const signinForm = document.getElementById('form-auth-signin');
+    if (signinForm) {
+      signinForm.onsubmit = async ev => {
+        ev.preventDefault();
+        const email = signinForm.email.value.trim();
+        const password = signinForm.password.value;
+        const msg = document.getElementById('signin-msg');
+        const submitBtn = document.getElementById('btn-submit-signin');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Memproses...';
+        msg.style.display = 'none';
+        try {
+          const res = await request('signin', { email, password });
+          if (res.signed_in) {
+            location.href = '/dashboard.html';
+          } else {
+            msg.className = 'message';
+            msg.textContent = res.message || 'Berhasil masuk.';
+            msg.style.display = 'block';
+          }
+        } catch (err) {
+          msg.className = 'message error';
+          msg.textContent = err.message || 'Gagal masuk. Periksa email dan password Anda.';
+          msg.style.display = 'block';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Masuk';
+        }
+      };
+    }
+
+    // Sign Up form submit
+    const signupForm = document.getElementById('form-auth-signup');
+    if (signupForm) {
+      signupForm.onsubmit = async ev => {
+        ev.preventDefault();
+        const email = signupForm.email.value.trim();
+        const password = signupForm.password.value;
+        const confirm = signupForm.confirm.value;
+        const msg = document.getElementById('signup-msg');
+        const submitBtn = document.getElementById('btn-submit-signup');
+        if (password.length < 8) {
+          msg.className = 'message error';
+          msg.textContent = 'Password minimal 8 karakter.';
+          msg.style.display = 'block';
+          return;
+        }
+        if (password !== confirm) {
+          msg.className = 'message error';
+          msg.textContent = 'Konfirmasi password tidak cocok.';
+          msg.style.display = 'block';
+          return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Mendaftarkan...';
+        msg.style.display = 'none';
+        try {
+          const res = await request('signup', { email, password });
+          if (res.signed_in) {
+            location.href = '/dashboard.html';
+          } else {
+            msg.className = 'message success';
+            msg.textContent = res.message || 'Pendaftaran berhasil. Silakan periksa email Anda untuk verifikasi.';
+            msg.style.display = 'block';
+          }
+        } catch (err) {
+          msg.className = 'message error';
+          msg.textContent = err.message || 'Pendaftaran belum dapat diproses.';
+          msg.style.display = 'block';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Daftar Akun';
+        }
+      };
+    }
+
+    // Forgot Password form submit
+    const forgotForm = document.getElementById('form-auth-forgot');
+    if (forgotForm) {
+      forgotForm.onsubmit = async ev => {
+        ev.preventDefault();
+        const email = forgotForm.email.value.trim();
+        const msg = document.getElementById('forgot-msg');
+        const submitBtn = document.getElementById('btn-submit-forgot');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Mengirim...';
+        msg.style.display = 'none';
+        try {
+          const res = await request('recover', { email });
+          msg.className = 'message success';
+          msg.textContent = res.message || 'Instruksi reset password telah dikirim ke email Anda.';
+          msg.style.display = 'block';
+        } catch (err) {
+          msg.className = 'message error';
+          msg.textContent = err.message || 'Gagal mengirim instruksi reset password.';
+          msg.style.display = 'block';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Kirim Link Reset Password';
+        }
+      };
+    }
+
+    // Reset Password form submit
+    const resetForm = document.getElementById('form-auth-reset');
+    if (resetForm) {
+      resetForm.onsubmit = async ev => {
+        ev.preventDefault();
+        const password = resetForm.password.value;
+        const confirm = resetForm.confirm.value;
+        const msg = document.getElementById('reset-msg');
+        const submitBtn = document.getElementById('btn-submit-reset');
+        if (password.length < 8) {
+          msg.className = 'message error';
+          msg.textContent = 'Password baru minimal 8 karakter.';
+          msg.style.display = 'block';
+          return;
+        }
+        if (password !== confirm) {
+          msg.className = 'message error';
+          msg.textContent = 'Konfirmasi password tidak cocok.';
+          msg.style.display = 'block';
+          return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Menyimpan...';
+        msg.style.display = 'none';
+        try {
+          const res = await request('reset-password-confirm', { token: recoveryToken, password });
+          msg.className = 'message success';
+          msg.textContent = res.message || 'Password berhasil diubah. Silakan masuk.';
+          msg.style.display = 'block';
+          setTimeout(() => { authMode = 'signin'; auth(); }, 2000);
+        } catch (err) {
+          msg.className = 'message error';
+          msg.textContent = err.message || 'Gagal mengubah password. Token mungkin sudah kedaluwarsa.';
+          msg.style.display = 'block';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Simpan Password Baru';
+        }
+      };
+    }
   }
   async function loadCards() {
     content.innerHTML = '<p class="account-loading" role="status">Memuat kartu milik Anda…</p>';
